@@ -1,0 +1,10 @@
+# File di sistema creati da macOS (Finder / Archivia) e Windows: non vanno nel repository
+.DS_Store
+__MACOSX/
+._*
+Thumbs.db
+desktop.ini
+
+# Impostazioni personali di WebStorm (quelle condivise del progetto restano in .idea/)
+.idea/workspace.xml
+.idea/shelf/

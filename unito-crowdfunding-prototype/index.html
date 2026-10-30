@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CrowdUniTO | Il Crowdfunding per la Ricerca dell'Università di Torino</title>
-  <meta name="description" content="Piattaforma di crowdfunding per la ricerca dell'Università degli Studi di Torino. Formula Lasci o Raddoppi: l'Ateneo raddoppia i fondi raccolti dai cittadini.">
+  <meta name="description"
+    content="Piattaforma di crowdfunding per la ricerca dell'Università degli Studi di Torino. Formula Lasci o Raddoppi: l'Ateneo raddoppia i fondi raccolti dai cittadini.">
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
   <!-- Skip link per accessibilità tastiera (WCAG 2.1 AA) -->
@@ -18,24 +21,31 @@
   <!-- 1. Barra Istituzionale Superiore di Ateneo -->
   <aside class="institutional-bar" aria-label="Informazioni istituzionali di Ateneo">
     <div class="container">
-      <span>Portale ufficiale di Crowdfunding dell'<strong>Università degli Studi di Torino</strong> &bull; Iniziativa di Terza Missione & Public Engagement</span>
-      <nav aria-label="Link portale ateneo">
-        <a href="https://www.unito.it" target="_blank" rel="noopener noreferrer">Portale UniTO.it &nearr;<span class="sr-only"> (si apre in una nuova scheda)</span></a>
+      <span>Portale di Crowdfunding dell'<strong>Università degli Studi di Torino</strong> &bull; Iniziativa di Terza
+        Missione &amp; Public Engagement</span>
+      <nav aria-label="Link di servizio" class="institutional-links">
+        <!-- [NUOVO] Assistenza sempre raggiungibile (A1, euristica 10, sev. 2: mancava un modo diretto per chiedere aiuto) -->
+        <a href="#/assistenza">Assistenza</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.unito.it" target="_blank" rel="noopener noreferrer">Portale UniTO.it &nearr;<span
+            class="sr-only"> (si apre in una nuova scheda)</span></a>
       </nav>
     </div>
   </aside>
 
   <!-- 2. Header & Navigazione Principale Desktop -->
+  <!-- [REVISIONE] A 1366px le voci di menu andavano a capo e il campo di ricerca era tagliato: header su due righe
+       (riga 1 = loghi + ricerca globale + accesso; riga 2 = menu). -->
   <header class="site-header" role="banner">
-    <div class="container navbar">
+    <div class="container header-top-row">
 
       <!-- In alto a sinistra, affiancati: Logo UniTO e Logo del sito CrowdUniTO -->
       <div class="brand-logos-container">
-        <!-- Logo UniTO -->
         <a href="#/home" class="unito-emblem-seal" title="Università degli Studi di Torino - Portale Crowdfunding">
           <div class="unito-seal-circle" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
           </div>
           <div class="unito-words">
@@ -45,10 +55,10 @@
           </div>
         </a>
 
-        <!-- Logo del sito: CrowdUniTO -->
         <a href="#/home" class="site-brand-badge" title="CrowdUniTO - Home">
           <div class="site-brand-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -62,133 +72,135 @@
         </a>
       </div>
 
-      <!-- Menu di Navigazione Principale Richiesto:
-           Home, Proponi progetto, FAQ, Cerca progetti (menu a tendina), barra di ricerca, Accedi, Registrati (per progettisti) -->
-      <nav class="main-nav" aria-label="Navigazione principale del sito">
-        <ul class="nav-menu-list">
-          <li>
-            <a href="#/home" class="nav-link active">Home</a>
-          </li>
-          <li>
-            <a href="#/proponi" class="nav-link">Proponi progetto</a>
-          </li>
-          <li>
-            <a href="#/faq" class="nav-link">FAQ</a>
-          </li>
-
-          <!-- Cerca progetti (Menu a Tendina Categorie) -->
-          <li class="nav-dropdown">
-            <!-- [REVISIONE] CORRETTO: role="menu"/"menuitem" promettono la navigazione con le frecce (che non c'era):
-                 gli screen reader annunciavano un menu che non si comportava da menu. Ora è un semplice elenco di link,
-                 che si chiude anche con Esc (vedi setupHeader in app.js). -->
-            <button class="dropdown-toggle-btn" id="cercaDropdownToggle" aria-expanded="false" aria-controls="cercaDropdownMenu">
-              <span>Cerca progetti</span>
-              <span class="dropdown-arrow" aria-hidden="true">&#9662;</span>
-            </button>
-            <ul class="dropdown-menu-list" id="cercaDropdownMenu" aria-label="Filtra progetti per area">
-              <li><a href="#/cerca" class="dropdown-item-link"><strong>Tutte le Campagne di Ricerca</strong></a></li>
-              <li class="dropdown-divider" aria-hidden="true"></li>
-              <li><a href="#/cerca?cat=salute" class="dropdown-item-link"><span aria-hidden="true">🩺</span> Medicina & Salute</a></li>
-              <li><a href="#/cerca?cat=ambiente" class="dropdown-item-link"><span aria-hidden="true">🌱</span> Ambiente & Clima</a></li>
-              <li><a href="#/cerca?cat=cultura" class="dropdown-item-link"><span aria-hidden="true">🏛️</span> Beni Culturali & Società</a></li>
-              <li><a href="#/cerca?cat=tech" class="dropdown-item-link"><span aria-hidden="true">💻</span> Intelligenza Artificiale & STEM</a></li>
-              <li><a href="#/cerca?cat=agro" class="dropdown-item-link"><span aria-hidden="true">🐝</span> Agricoltura & Biodiversità</a></li>
-            </ul>
-          </li>
-        </ul>
-      </nav>
-
-      <!-- Barra di Ricerca Header -->
+      <!-- Ricerca globale: progetti + FAQ + pagine informative (A1, euristica 7, sev. 2) -->
       <form class="header-search-form" id="headerSearchForm" role="search">
-        <input type="search" id="headerSearchInput" class="header-search-input" placeholder="Cerca progetto o docente" aria-label="Cerca progetto o docente">
+        <label for="headerSearchInput" class="sr-only">Cerca nel sito</label>
+        <input type="search" id="headerSearchInput" class="header-search-input"
+          placeholder="Cerca progetti, docenti o informazioni (es. ricevuta)">
         <button type="submit" class="header-search-btn" aria-label="Esegui ricerca">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
         </button>
       </form>
 
       <!-- Area Autenticazione: Accedi / Registrati (per progettisti) -->
       <div class="header-auth-actions" id="headerAuthContainer">
         <a href="#/login" class="nav-auth-link btn-login">Accedi</a>
-        <a href="#/registrati" class="nav-auth-link btn-register">
-          Registrati <span class="reg-note">(per progettisti)</span>
-        </a>
+        <a href="#/registrati" class="nav-auth-link btn-register">Registrati <span class="reg-note"></span></a>
       </div>
+    </div>
 
+    <div class="header-nav-row">
+      <div class="container">
+        <!-- [NUOVO] Prima le voci per chi sostiene (pubblico principale), poi quelle per i ricercatori;
+             nuova voce "Come funziona" (A1, euristica 10, sev. 3: informazioni pensate solo per il progettista). -->
+        <nav class="main-nav" aria-label="Navigazione principale del sito">
+          <ul class="nav-menu-list">
+            <li><a href="#/home" class="nav-link active">Home</a></li>
+            <li class="nav-dropdown">
+              <button type="button" class="dropdown-toggle-btn" id="cercaDropdownToggle" aria-expanded="false"
+                aria-controls="cercaDropdownMenu">
+                <span>Cerca progetti</span>
+                <span class="dropdown-arrow" aria-hidden="true">&#9662;</span>
+              </button>
+              <!-- Voci generate da app.js a partire da CATEGORIES -->
+              <ul class="dropdown-menu-list" id="cercaDropdownMenu" aria-label="Filtra progetti per area">
+                <li><a href="#/cerca" class="dropdown-item-link"><strong>Tutte le campagne</strong></a></li>
+              </ul>
+            </li>
+            <li><a href="#/come-funziona" class="nav-link">Come funziona</a></li>
+            <li><a href="#/proponi" class="nav-link">Proponi progetto</a></li>
+            <li><a href="#/faq" class="nav-link">FAQ</a></li>
+          </ul>
+        </nav>
+      </div>
     </div>
   </header>
 
   <!-- 3. Contenitore Dinamico delle Pagine (SPA Hash Routing) -->
   <main id="app-root" role="main" tabindex="-1">
     <!-- I contenuti verranno renderizzati via JavaScript (app.js) in base a window.location.hash -->
+    <noscript>
+      <div class="container" style="padding: 3rem 2rem;">
+        <h1>JavaScript disattivato</h1>
+        <p>Questo prototipo usa JavaScript per mostrare le pagine. Attivalo nelle impostazioni del browser e ricarica
+          <code>index.html</code>.
+        </p>
+      </div>
+    </noscript>
   </main>
+
+  <!-- [NUOVO] Pulsante "Torna su" (A1, euristica 7, sev. 1) -->
+  <button type="button" class="back-to-top" id="backToTop" hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+    <span>Torna su</span>
+  </button>
 
   <!-- 4. Footer Istituzionale Completo -->
   <footer class="site-footer" role="contentinfo">
     <div class="container footer-grid">
-      <!-- Colonna Brand & Identità -->
       <div>
         <div class="footer-brand-title">Crowd<span>UniTO</span></div>
         <p style="margin-bottom: 1rem; line-height: 1.55;">
-          La piattaforma di crowdfunding partecipativo e scientifico dell'<strong>Università degli Studi di Torino</strong>. Sosteniamo i laboratori e moltiplichiamo l'impatto della ricerca grazie al fondo di ateneo "Lasci o Raddoppi".
+          La piattaforma di crowdfunding partecipativo e scientifico dell'<strong>Università degli Studi di
+            Torino</strong>. Sosteniamo i laboratori e moltiplichiamo l'impatto della ricerca grazie al cofinanziamento
+          di Ateneo "Lasci o Raddoppi".
         </p>
-        <p style="font-size: 0.8125rem; color: #64748B;">
+        <p style="font-size: 0.8125rem; color: #94A3B8;">
           Università degli Studi di Torino &bull; Via Giuseppe Verdi, 8 - 10124 Torino (TO)<br>
           C.F. 80088230018 | P.IVA 02099550010
         </p>
       </div>
 
-      <!-- Colonna Esplora Progetti -->
       <div>
-        <!-- [REVISIONE] CORRETTO: i titoli delle colonne erano <h4> subito dopo l'<h1> della pagina (livelli saltati,
-             problema per chi naviga per titoli con lo screen reader) → <h2> con la stessa classe e lo stesso aspetto. -->
-        <h2 class="footer-col-title">Esplora la Ricerca</h2>
-        <!-- [REVISIONE] CORRETTO: le aree avevano nomi diversi da quelli del menu ("Medicina & Neuroscienze" vs
-             "Medicina & Salute", "Ambiente & Sostenibilità" vs "Ambiente & Clima", "Tecnologia & AI" vs
-             "Intelligenza Artificiale & STEM"): stesso problema di coerenza segnalato nell'A1 (PARTNER / Collaborazioni). -->
-        <ul class="footer-links">
-          <li><a href="#/home">Home Page</a></li>
-          <li><a href="#/cerca">Tutte le Campagne</a></li>
-          <li><a href="#/cerca?cat=salute">Medicina & Salute</a></li>
-          <li><a href="#/cerca?cat=ambiente">Ambiente & Clima</a></li>
-          <li><a href="#/cerca?cat=tech">Intelligenza Artificiale & STEM</a></li>
-          <li><a href="#/progetto/p1">Progetto in evidenza: NeuroPark</a></li>
+        <h2 class="footer-col-title">Per chi sostiene</h2>
+        <!-- Le aree vengono aggiunte da app.js (stessa fonte del menu: CATEGORIES) -->
+        <ul class="footer-links" id="footerExploreLinks">
+          <li><a href="#/cerca">Tutte le campagne</a></li>
+          <li><a href="#/come-funziona">Come funziona la donazione</a></li>
         </ul>
       </div>
 
-      <!-- Colonna Per Ricercatori -->
       <div>
-        <h2 class="footer-col-title">Per i Ricercatori</h2>
+        <h2 class="footer-col-title">Per i ricercatori</h2>
         <ul class="footer-links">
-          <li><a href="#/proponi">Proponi Progetto (Le 4 Fasi)</a></li>
-          <li><a href="#/formazione">Fase 1: Formazione & Calendario</a></li>
-          <li><a href="#/pacchetti">Fase 3: Pacchetti Servizi</a></li>
-          <li><a href="#/candidatura">Fase 2 & 4: Invia Proposta Online</a></li>
-          <li><a href="#/profilo">Area Personale Ricercatore</a></li>
+          <li><a href="#/proponi">Proponi un progetto (le 4 fasi)</a></li>
+          <li><a href="#/formazione">Fase 1: formazione e calendario</a></li>
+          <li><a href="#/pacchetti">Fase 3: pacchetti di servizi</a></li>
+          <li><a href="#/candidatura">Invia la proposta online</a></li>
+          <li><a href="#/profilo">Area personale</a></li>
         </ul>
       </div>
 
-      <!-- Colonna Supporto, FAQ & Note Didattiche -->
+      <!-- [REVISIONE] Tolti "Verifica Pagina di Errore 404" e la nota tecnica sull'hash routing (indicazioni per chi
+           valuta il prototipo, non per l'utente): ora sono nel README. -->
       <div>
-        <h2 class="footer-col-title">Supporto & Note</h2>
-        <!-- [REVISIONE] DA DECIDERE: "Verifica Pagina di Errore 404" (e la nota sull'hash routing in fondo) sono
-             indicazioni per chi valuta il prototipo, non per l'utente del sito. Suggerimento: spostarle nel README. -->
+        <h2 class="footer-col-title">Supporto</h2>
         <ul class="footer-links">
-          <li><a href="#/faq">Domande Frequenti (FAQ)</a></li>
-          <li><a href="#/faq">Detrazioni e Benefici Fiscali</a></li>
-          <li><a href="#/404">Verifica Pagina di Errore 404</a></li>
-          <li><a href="mailto:crowdfunding@unito.it">Contatta l'Ufficio di Ateneo</a></li>
-          <li><a href="https://www.ideaginger.it/partner/universita-di-torino.html" target="_blank" rel="noopener noreferrer">Portale Ginger Partner &nearr;<span class="sr-only"> (si apre in una nuova scheda)</span></a></li>
+          <li><a href="#/faq">Domande frequenti (FAQ)</a></li>
+          <li><a href="#/faq?apri=detrazioni">Detrazioni e benefici fiscali</a></li>
+          <li><a href="#/assistenza">Assistenza: apri una richiesta</a></li>
+          <li><a href="https://www.ideaginger.it/partner/universita-di-torino.html" target="_blank"
+              rel="noopener noreferrer">Portale Ginger Partner &nearr;<span class="sr-only"> (si apre in una nuova
+                scheda)</span></a></li>
         </ul>
       </div>
     </div>
 
     <div class="container footer-bottom">
-      <span>&copy; 2026 Università degli Studi di Torino &bull; Progetto Didattico per il Corso di <strong>Human-Computer Interaction (HCI)</strong>.</span>
-      <span>Tutti i collegamenti interni operano via client-side hash routing.</span>
+      <span>&copy; 2026 Università degli Studi di Torino &bull; Progetto didattico per il corso di
+        <strong>Human-Computer Interaction (HCI)</strong> &bull; Pagamenti e dati simulati.</span>
     </div>
   </footer>
 
   <!-- Script Applicativo Client-Side -->
   <script src="js/app.js"></script>
 </body>
+
 </html>
