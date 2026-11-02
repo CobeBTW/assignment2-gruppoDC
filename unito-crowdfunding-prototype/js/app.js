@@ -31,7 +31,10 @@
 
   // Regola reale di Funds TOgether (UniTO): al 100% dell'obiettivo l'Ateneo aggiunge
   // una cifra pari a quella raccolta, fino a un massimo di 10.000 € per progetto.
-  const MATCHING_CAP = 10000;
+  // [REVISIONE] 31/10 (richiesta del gruppo): nel prototipo il tetto di 10.000 € è stato tolto.
+  // Se la campagna arriva al 100%, l'Ateneo aggiunge sempre una cifra pari a quella raccolta.
+  // Attenzione: è una scelta di progetto diversa dal regolamento reale; se la relazione cita
+  // Funds TOgether, conviene dirlo. Rimossa la costante MATCHING_CAP e tutti i testi "fino a 10.000 €".
 
   // [REVISIONE] Obiettivi economici: prima andavano da 10.000 a 25.000 €. Con il tetto di 10.000 €
   // l'Ateneo NON raddoppia una campagna da 20.000 € (aggiunge solo il 50%), quindi i messaggi
@@ -39,6 +42,7 @@
   // → CORRETTO: obiettivi riportati tra 6.000 e 10.000 € (come le campagne reali di Funds TOgether 2026,
   //   da 4.700 a 10.000 €), mantenendo le stesse percentuali di avanzamento. Verificate se nel PDF
   //   avete citato gli importi vecchi.
+  // [REVISIONE] 31/10: tolto il tetto, gli obiettivi restano comunque tra 6.000 e 10.000 €.
   // [REVISIONE] Il campo "percentage" era salvato a mano e poteva non coincidere con collected/target:
   // → ora viene calcolato (vedi getProjectStats).
   const MOCK_PROJECTS = [
@@ -334,7 +338,7 @@
     { id: 'commissioni', audience: 'sostenitori', group: 'Donare', q: 'Quanto della mia donazione arriva davvero al progetto?',
       a: 'La piattaforma non trattiene commissioni sulle donazioni. Vengono sottratte soltanto le commissioni del metodo di pagamento scelto (per esempio quelle del circuito della carta), che restano a carico del progetto e non tue.' },
     { id: 'raddoppio', audience: 'sostenitori', group: 'Raddoppio e regole', q: 'Come funziona il meccanismo "Lasci o Raddoppi"?',
-      a: 'Quando una campagna raggiunge il 100% dell\'obiettivo entro la scadenza, l\'Università di Torino aggiunge una cifra pari a quella raccolta, fino a un massimo di 10.000 € per progetto. Esempio: una campagna da 8.000 € che raccoglie 8.000 € riceve altri 8.000 € dall\'Ateneo. Se la campagna non arriva al 100%, il cofinanziamento non scatta.' },
+      a: 'Quando una campagna raggiunge il 100% dell\'obiettivo entro la scadenza, l\'Università di Torino aggiunge una cifra pari a quella raccolta. Esempio: una campagna da 8.000 € che raccoglie 8.000 € riceve altri 8.000 € dall\'Ateneo. Se la campagna non arriva al 100%, il cofinanziamento non scatta.' },
     { id: 'tutto-o-niente', audience: 'sostenitori', group: 'Raddoppio e regole', q: 'Cosa succede se un progetto non raggiunge il 100% dell\'obiettivo?',
       a: 'Le campagne seguono la regola "tutto o niente": se alla scadenza l\'obiettivo non è raggiunto, il progetto non riceve nulla e le donazioni vengono rimborsate per intero ai sostenitori, senza trattenute. Non devi fare nulla: il rimborso è automatico sullo stesso metodo di pagamento.' },
     { id: 'detrazioni', audience: 'sostenitori', group: 'Ricevute, tasse e privacy', q: 'Le donazioni sono deducibili dalle tasse?',
@@ -353,9 +357,9 @@
     { id: 'formazione-obbligatoria', audience: 'ricercatori', group: 'Partecipare', q: 'È obbligatorio frequentare i moduli di formazione?',
       a: 'Sì, almeno un componente del team deve frequentare per intero un\'edizione del percorso formativo (in presenza o online), prima della pubblicazione. Consulta il <a href="#/formazione" class="text-link">calendario delle edizioni disponibili</a>.' },
     { id: 'esito', audience: 'ricercatori', group: 'Candidatura e costi', q: 'Entro quanto tempo riceverò una risposta alla candidatura?',
-      a: 'Il Comitato Tecnico-Scientifico di UniTO comunica l\'esito formale entro <strong>15 giorni lavorativi</strong> dall\'invio del modulo online, all\'indirizzo email istituzionale.' },
+      a: 'Il Comitato Tecnico-Scientifico di UniTO comunica l\'esito formale entro <strong>15 giorni lavorativi</strong> dall\'invio del modulo online, via email.' },
     { id: 'quota', audience: 'ricercatori', group: 'Candidatura e costi', q: 'Cosa comprende la quota di 350 € + IVA?',
-      a: 'La quota copre la gestione tecnica, la pubblicazione della campagna, la revisione dei testi e un incontro 1-a-1 con un Campaign Manager. Può essere imputata ai fondi di ricerca del Dipartimento. Il confronto completo è nella <a href="#/pacchetti" class="text-link">pagina dei pacchetti di servizi</a>.' }
+      a: 'La quota copre la gestione tecnica, la pubblicazione della campagna, la revisione dei testi e un incontro 1-a-1 con un Campaign Manager. Può essere imputata ai fondi di ricerca del Dipartimento. Il confronto completo è nella pagina dei <a href="#/pacchetti" class="text-link">pacchetti e servizi</a>.' }
   ];
   /* ==========================================================================
      2. GESTIONE DELLO STATO UTENTE (SIMULAZIONE CLIENT-SIDE LOCALSTORAGE)
@@ -394,11 +398,81 @@
     }
   }
 
+  // I dati della carta restano SOLO in memoria (mai nello storage):
+  const cardMemory = {};
+
+  /**
+   * Azzera completamente tutti i dati utente, bozze, pagamenti, appuntamenti e cache locale.
+   * Viene invocata ogni volta che si cambia account o si effettua il logout.
+   */
+  function clearAllUserDataAndCache() {
+    // 1. Azzeramento dati carta e pagamenti in memoria
+    for (const k in cardMemory) {
+      delete cardMemory[k];
+    }
+
+    // 2. Azzeramento iscrizioni ai corsi e appuntamenti
+    writeJSON(TRAINING_ENROLL_KEY, []);
+
+    // 3. Azzeramento bozze di proposta candidatura e proposte inviate
+    writeJSON(PROPOSAL_DRAFT_KEY, null);
+    writeJSON(SUBMITTED_STORAGE_KEY, []);
+
+    // 4. Azzeramento donazioni simulate
+    writeJSON(DONATIONS_KEY, []);
+
+    // 5. Rimozione di tutte le sessioni di checkout da sessionStorage e localStorage
+    try {
+      if (typeof window !== 'undefined') {
+        const storages = [window.sessionStorage, window.localStorage];
+        storages.forEach(store => {
+          if (!store) return;
+          const toRemove = [];
+          for (let i = 0; i < store.length; i++) {
+            const k = store.key(i);
+            if (k && (
+              k.startsWith(CHECKOUT_PREFIX) ||
+              k.startsWith('crowdunito_checkout_') ||
+              k === PROPOSAL_DRAFT_KEY ||
+              k === TRAINING_ENROLL_KEY ||
+              k === SUBMITTED_STORAGE_KEY ||
+              k === DONATIONS_KEY
+            )) {
+              toRemove.push(k);
+            }
+          }
+          toRemove.forEach(k => store.removeItem(k));
+        });
+      }
+    } catch (e) {
+      /* ignora in contesti con restrizioni storage */
+    }
+  }
+
   function getCurrentUser() {
-    return readJSON(AUTH_STORAGE_KEY, null);
+    const user = readJSON(AUTH_STORAGE_KEY, null);
+    if (user) {
+      delete user.role;
+      delete user.department;
+    }
+    return user;
   }
 
   function setCurrentUser(user) {
+    const prevUser = getCurrentUser();
+    // Se l'utente si disconnette, o effettua un nuovo login, o cambia account con email diversa
+    const isLogout = !user;
+    const isDifferentAccount = prevUser && user && prevUser.email && user.email && prevUser.email.toLowerCase() !== user.email.toLowerCase();
+    const isNewLogin = !prevUser && user;
+
+    if (isLogout || isDifferentAccount || isNewLogin) {
+      clearAllUserDataAndCache();
+    }
+
+    if (user) {
+      delete user.role;
+      delete user.department;
+    }
     writeJSON(AUTH_STORAGE_KEY, user || null);
     updateHeaderAuthUI();
   }
@@ -428,8 +502,8 @@
     const supporters = p.supporters + confirmed.length;
     const percentage = Math.round((collected / p.target) * 100);
     const reachedGoal = collected >= p.target;
-    // Regola Funds TOgether: al 100% l'Ateneo aggiunge quanto raccolto, max 10.000 €
-    const matching = Math.min(reachedGoal ? collected : p.target, MATCHING_CAP);
+    // Al 100% l'Ateneo aggiunge quanto raccolto ([REVISIONE] 31/10: senza più il tetto di 10.000 €)
+    const matching = reachedGoal ? collected : p.target;
     return {
       collected,
       supporters,
@@ -521,13 +595,103 @@
     pageCleanups.push(fn);
   }
 
+  // Disabilita il ripristino automatico dello scroll da parte del browser (fondamentale per SPA con hash)
+  if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+    try {
+      history.scrollRestoration = 'manual';
+    } catch (e) { /* ignora */ }
+  }
+
+  function scrollToTopInstant() {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } catch (e) {
+      try { window.scrollTo(0, 0); } catch (e2) { /* ignora */ }
+    }
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    const appRoot = document.getElementById('app-root');
+    if (appRoot && appRoot.scrollTop > 0) appRoot.scrollTop = 0;
+  }
+
   function navigateTo(hash) {
+    scrollToTopInstant();
     if (window.location.hash === hash) {
       handleRouting();
     } else {
       window.location.hash = hash;
     }
+    scrollToTopInstant();
+    requestAnimationFrame(() => {
+      scrollToTopInstant();
+      setTimeout(scrollToTopInstant, 15);
+      setTimeout(scrollToTopInstant, 60);
+    });
   }
+
+  // Listener globale sui clic: assicura che qualsiasi clic (link, pulsanti, azioni) riporti sempre in cima alla pagina
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (link) {
+      const href = link.getAttribute('href') || '';
+      // Se il link contiene 'apri=' (salto diretto a una FAQ specifica), non forzare lo scroll in cima
+      if (href.includes('apri=') || href.startsWith('#faq-')) {
+        const current = window.location.hash || '';
+        if (current === href) {
+          e.preventDefault();
+          handleRouting();
+        }
+        return;
+      }
+      // [REVISIONE] 31/10: lo scroll in cima veniva forzato per QUALSIASI link. Le ancore interne alla pagina
+      // ("Richiedi consulenza personalizzata" in Pacchetti, "Esplora i progetti attivi" in Home, l'indice
+      // delle sezioni nella scheda progetto, i link del riepilogo errori dei form...) arrivavano al punto
+      // giusto e dopo 10-150 ms la pagina tornava in cima. Lo stesso succedeva con i link che si aprono
+      // in una nuova scheda. → Ora la pagina torna in cima solo con i link che cambiano pagina (#/...).
+      if (link.target === '_blank') return;
+      if (href.startsWith('#/')) {
+        scrollToTopInstant();
+        const current = window.location.hash || '#/home';
+        if (current === href) {
+          // Stesso hash: hashchange non scatta in automatico, quindi forziamo ri-routing e scroll a cima
+          e.preventDefault();
+          handleRouting();
+          scrollToTopInstant();
+        }
+      } else if (href === '#' || href === '#top' || href === '#app-root' || !href) {
+        e.preventDefault();
+        scrollToTopInstant();
+      } else {
+        // Ancore interne (#id), mailto:, link esterni: nessuno scroll forzato
+        return;
+      }
+      setTimeout(scrollToTopInstant, 10);
+      setTimeout(scrollToTopInstant, 50);
+      setTimeout(scrollToTopInstant, 150);
+      return;
+    }
+
+    const btn = e.target.closest('button, .btn, input[type="submit"]');
+    if (btn) {
+      // Non forzare lo scroll in cima per pulsanti interni di pagina, selezione sessioni, form o accordion
+      if (
+        btn.classList.contains('accordion-header') ||
+        btn.classList.contains('btn-select-session') ||
+        btn.classList.contains('dropdown-toggle-btn') ||
+        btn.classList.contains('faq-tab-btn') ||
+        btn.closest('form') ||
+        btn.closest('.calendar-table-wrap') ||
+        btn.getAttribute('data-no-scroll') ||
+        btn.type === 'button'
+      ) return;
+
+      scrollToTopInstant();
+      setTimeout(scrollToTopInstant, 15);
+      setTimeout(scrollToTopInstant, 60);
+      setTimeout(scrollToTopInstant, 150);
+    }
+  }, true);
 
   function getRoute() {
     let hash = window.location.hash || '#/home';
@@ -548,9 +712,10 @@
     pageCleanups.forEach(fn => { try { fn(); } catch (e) { /* ignora */ } });
     pageCleanups = [];
 
-    // [REVISIONE] Lo scroll "smooth" a ogni cambio pagina faceva scorrere visibilmente tutta la
-    // pagina precedente prima di mostrare la nuova. → CORRETTO: salto immediato in cima.
-    window.scrollTo(0, 0);
+    // Assicura che a ogni cambio pagina si torni istantaneamente in cima, eccetto deep link ad ancore/domande specifiche (?apri=, ?fase= o ?package=)
+    if (!params.get('apri') && !params.get('fase') && !params.get('package')) {
+      scrollToTopInstant();
+    }
 
     // Aggiorna stato attivo nella navigazione
     updateNavActive(path);
@@ -617,16 +782,29 @@
       h1.focus({ preventScroll: true });
     }
     isFirstRender = false;
+
+    // Riporta subito in cima alla pagina dopo il rendering completo del nuovo contenuto (eccetto deep link)
+    if (!params.get('apri') && !params.get('fase') && !params.get('package')) {
+      scrollToTopInstant();
+      requestAnimationFrame(() => {
+        scrollToTopInstant();
+        setTimeout(scrollToTopInstant, 15);
+        setTimeout(scrollToTopInstant, 60);
+        setTimeout(scrollToTopInstant, 150);
+      });
+    }
   }
 
   function updateNavActive(currentPath) {
     document.querySelectorAll('.nav-link').forEach(link => {
       const href = link.getAttribute('href') || '';
       const targetPath = href.replace('#/', '');
-      // [REVISIONE] Le pagine figlie non evidenziavano la voce madre (es. "Formazione" non
-      // illuminava "Proponi progetto"): l'utente non capiva in che sezione si trovava.
+      // Pagine figlie che illuminano la voce madre nella barra di navigazione:
+      // "candidatura" illumina "Proponi progetto".
+      // "formazione" e "pacchetti" appartengono al sottomenu "Servizi" e illuminano
+      // unicamente la voce "Servizi", evitando di selezionare entrambe le voci contemporaneamente.
       const sectionOf = {
-        formazione: 'proponi', pacchetti: 'proponi', candidatura: 'proponi'
+        candidatura: 'proponi'
       };
       const current = sectionOf[currentPath] || currentPath;
       if (current === targetPath || (current === '' && targetPath === 'home')) {
@@ -638,13 +816,32 @@
       }
     });
 
-    // [REVISIONE] "Cerca progetti" (menu a tendina) non risultava mai attivo, nemmeno nel catalogo
-    // o in una scheda progetto. → CORRETTO.
+    // "Cerca progetti" (menu a tendina) attivo nel catalogo o scheda progetto
     const toggle = document.getElementById('cercaDropdownToggle');
     if (toggle) {
       const inCatalog = currentPath === 'cerca' || /^(progetto|sostieni|conferma)\//.test(currentPath);
       toggle.classList.toggle('active', inCatalog);
     }
+
+    // "Servizi" (menu a tendina) attivo solo nelle pagine dei servizi (formazione o pacchetti)
+    const serviziToggle = document.getElementById('serviziDropdownToggle');
+    if (serviziToggle) {
+      const inServizi = currentPath === 'formazione' || currentPath === 'pacchetti';
+      serviziToggle.classList.toggle('active', inServizi);
+    }
+
+    // Evidenzia la singola voce attiva anche dentro il menu a tendina aperto
+    document.querySelectorAll('.dropdown-item-link').forEach(link => {
+      const href = link.getAttribute('href') || '';
+      const targetPath = href.replace('#/', '');
+      const isActive = targetPath === currentPath;
+      link.classList.toggle('active', isActive);
+      if (isActive) {
+        link.setAttribute('aria-current', 'page');
+      } else {
+        link.removeAttribute('aria-current');
+      }
+    });
   }
 
   /* ==========================================================================
@@ -698,12 +895,6 @@
         <div class="card-thumb-wrap" style="background: ${p.imageGradient};">
           <div class="card-top-badges">
             <span class="badge-cat-tag">${esc(catLabel(p.category))}</span>
-            ${p.matchingActive ? `
-              <span class="badge-match-pill" title="Al 100% dell'obiettivo l'Università aggiunge una cifra pari a quella raccolta (max 10.000 €)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                UniTO raddoppia
-              </span>
-            ` : ''}
           </div>
           <div class="card-thumb-center-icon">
             ${categoryIcon(p.category, p.colorAccent, 46)}
@@ -772,7 +963,7 @@
             <div class="blue-strip-highlights">
               <span>✓ Formazione d'Ateneo gratuita</span>
               <span>✓ Consulenza 1-a-1 con un Campaign Manager</span>
-              <span>✓ Cofinanziamento 1:1 fino a 10.000 €</span>
+              <span>✓ Cofinanziamento 1:1 dell'Ateneo</span>
             </div>
           </div>
           <div class="blue-strip-action">
@@ -780,9 +971,7 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               Invia la tua proposta
             </a>
-            <span class="blue-strip-subnote">
-              ${currentUser ? 'Accesso effettuato come ' + esc(currentUser.name) : 'Ti chiederemo di accedere con le credenziali UniTO'}
-            </span>
+            ${currentUser ? `<span class="blue-strip-subnote">Accesso effettuato come ${esc(currentUser.name)}</span>` : ''}
           </div>
         </div>
       </section>
@@ -822,6 +1011,337 @@
     return !el.disabled && el.type !== 'hidden' && !el.closest('[hidden]');
   }
 
+  // Elenco dei provider email noti, reali ed esistenti (italiani, universitari e internazionali)
+  const VALID_EMAIL_DOMAINS = new Set([
+    // Domini UniTO e accademici piemontesi/italiani
+    'unito.it', 'edu.unito.it', 'studenti.unito.it',
+    'polito.it', 'studenti.polito.it',
+    'unimi.it', 'unimib.it', 'unibo.it', 'uniroma1.it', 'unipd.it', 'unipi.it', 'unina.it', 'unifi.it', 'unipv.it', 'cnr.it', 'istruzione.it',
+    // Provider globali diffusi
+    'gmail.com', 'googlemail.com',
+    'hotmail.com', 'hotmail.it', 'outlook.com', 'outlook.it', 'live.com', 'live.it', 'msn.com',
+    'yahoo.com', 'yahoo.it', 'ymail.com',
+    'icloud.com', 'me.com', 'mac.com',
+    'aol.com', 'mail.com', 'zoho.com', 'gmx.com', 'gmx.it', 'gmx.de', 'gmx.net',
+    'proton.me', 'protonmail.com', 'pm.me',
+    // Provider italiani diffusi
+    'libero.it', 'virgilio.it', 'inwind.it', 'iol.it', 'blu.it',
+    'tiscali.it', 'fastwebnet.it', 'tim.it', 'alice.it', 'tin.it',
+    'vodafone.it', 'tre.it', 'windtre.it',
+    'poste.it', 'postecert.it', 'email.it',
+    'aruba.it', 'legalmail.it', 'pec.it'
+  ]);
+
+  function isValidEmailDomain(domain) {
+    if (!domain) return false;
+    const d = domain.toLowerCase().trim();
+    if (d === 'unito.it' || d.endsWith('.unito.it')) return true;
+    if (d === 'polito.it' || d.endsWith('.polito.it')) return true;
+    return VALID_EMAIL_DOMAINS.has(d);
+  }
+
+  /* --- [NUOVO] Tabella corrispondenza CAP e Città per la spedizione --- */
+  const KNOWN_CAP_CITIES = [
+    // --- Torino e Comuni della Città Metropolitana di Torino (CAP 10xxx) ---
+    { prefix: '101', city: 'Torino', prov: 'TO' },
+    { zip: '10100', city: 'Torino', prov: 'TO' },
+    { zip: '10022', city: 'Carmagnola', prov: 'TO' },
+    { zip: '10024', city: 'Moncalieri', prov: 'TO' },
+    { zip: '10023', city: 'Chieri', prov: 'TO' },
+    { zip: '10025', city: 'Pino Torinese', prov: 'TO' },
+    { zip: '10028', city: 'Trofarello', prov: 'TO' },
+    { zip: '10034', city: 'Chivasso', prov: 'TO' },
+    { zip: '10036', city: 'Settimo Torinese', prov: 'TO' },
+    { zip: '10040', city: 'Rivalta di Torino', prov: 'TO' },
+    { zip: '10042', city: 'Nichelino', prov: 'TO' },
+    { zip: '10043', city: 'Orbassano', prov: 'TO' },
+    { zip: '10045', city: 'Piossasco', prov: 'TO' },
+    { zip: '10046', city: 'Poirino', prov: 'TO' },
+    { zip: '10048', city: 'Vinovo', prov: 'TO' },
+    { zip: '10051', city: 'Avigliana', prov: 'TO' },
+    { zip: '10052', city: 'Bardonecchia', prov: 'TO' },
+    { zip: '10053', city: 'Bussoleno', prov: 'TO' },
+    { zip: '10059', city: 'Susa', prov: 'TO' },
+    { zip: '10060', city: 'None', prov: 'TO' },
+    { zip: '10064', city: 'Pinerolo', prov: 'TO' },
+    { zip: '10071', city: 'Borgaro Torinese', prov: 'TO' },
+    { zip: '10072', city: 'Caselle Torinese', prov: 'TO' },
+    { zip: '10073', city: 'Ciriè', prov: 'TO' },
+    { zip: '10078', city: 'Venaria Reale', prov: 'TO' },
+    { zip: '10080', city: 'San Benigno Canavese', prov: 'TO' },
+    { zip: '10082', city: 'Cuorgnè', prov: 'TO' },
+    { zip: '10086', city: 'Rivarolo Canavese', prov: 'TO' },
+    { zip: '10090', city: 'San Mauro Torinese', prov: 'TO' },
+    { zip: '10091', city: 'Alpignano', prov: 'TO' },
+    { zip: '10092', city: 'Beinasco', prov: 'TO' },
+    { zip: '10093', city: 'Collegno', prov: 'TO' },
+    { zip: '10094', city: 'Giaveno', prov: 'TO' },
+    { zip: '10095', city: 'Grugliasco', prov: 'TO' },
+    { zip: '10098', city: 'Rivoli', prov: 'TO' },
+    { zip: '10015', city: 'Ivrea', prov: 'TO' },
+    { zip: '10010', city: 'Caluso', prov: 'TO' },
+
+    // --- Cuneo e Provincia (CAP 12xxx) ---
+    { zip: '12100', city: 'Cuneo', prov: 'CN' },
+    { zip: '12037', city: 'Saluzzo', prov: 'CN' },
+    { zip: '12038', city: 'Savigliano', prov: 'CN' },
+    { zip: '12042', city: 'Bra', prov: 'CN' },
+    { zip: '12045', city: 'Fossano', prov: 'CN' },
+    { zip: '12051', city: 'Alba', prov: 'CN' },
+    { zip: '12084', city: 'Mondovì', prov: 'CN' },
+    { zip: '12032', city: 'Barge', prov: 'CN' },
+    { zip: '12035', city: 'Racconigi', prov: 'CN' },
+    { zip: '12043', city: 'Canale', prov: 'CN' },
+    { zip: '12069', city: 'Santa Vittoria d\'Alba', prov: 'CN' },
+    { zip: '12022', city: 'Busca', prov: 'CN' },
+    { zip: '12023', city: 'Caraglio', prov: 'CN' },
+    { zip: '12011', city: 'Borgo San Dalmazzo', prov: 'CN' },
+
+    // --- Asti e Provincia (CAP 14xxx) ---
+    { zip: '14100', city: 'Asti', prov: 'AT' },
+    { zip: '14046', city: 'Nizza Monferrato', prov: 'AT' },
+    { zip: '14053', city: 'Canelli', prov: 'AT' },
+
+    // --- Alessandria e Provincia (CAP 15xxx) ---
+    { zip: '15121', city: 'Alessandria', prov: 'AL' },
+    { zip: '15122', city: 'Alessandria', prov: 'AL' },
+    { zip: '15033', city: 'Casale Monferrato', prov: 'AL' },
+    { zip: '15067', city: 'Novi Ligure', prov: 'AL' },
+    { zip: '15057', city: 'Tortona', prov: 'AL' },
+    { zip: '15011', city: 'Acqui Terme', prov: 'AL' },
+    { zip: '15076', city: 'Ovada', prov: 'AL' },
+
+    // --- Vercelli e Biella (CAP 13xxx) ---
+    { zip: '13100', city: 'Vercelli', prov: 'VC' },
+    { zip: '13900', city: 'Biella', prov: 'BI' },
+    { zip: '13043', city: 'Cigliano', prov: 'VC' },
+    { zip: '13048', city: 'Santhià', prov: 'VC' },
+    { zip: '13836', city: 'Cossato', prov: 'BI' },
+
+    // --- Novara e VCO (CAP 28xxx) ---
+    { zip: '28100', city: 'Novara', prov: 'NO' },
+    { zip: '28921', city: 'Verbania', prov: 'VB' },
+    { zip: '28845', city: 'Domodossola', prov: 'VB' },
+    { zip: '28041', city: 'Arona', prov: 'NO' },
+    { zip: '28021', city: 'Borgomanero', prov: 'NO' },
+
+    // --- Valle d'Aosta (CAP 11xxx) ---
+    { zip: '11100', city: 'Aosta', prov: 'AO' },
+
+    // --- Grandi Città Italiane ---
+    { prefix: '201', city: 'Milano', prov: 'MI' },
+    { zip: '20100', city: 'Milano', prov: 'MI' },
+    { prefix: '001', city: 'Roma', prov: 'RM' },
+    { zip: '00100', city: 'Roma', prov: 'RM' },
+    { prefix: '801', city: 'Napoli', prov: 'NA' },
+    { zip: '80100', city: 'Napoli', prov: 'NA' },
+    { prefix: '401', city: 'Bologna', prov: 'BO' },
+    { zip: '40100', city: 'Bologna', prov: 'BO' },
+    { prefix: '501', city: 'Firenze', prov: 'FI' },
+    { zip: '50100', city: 'Firenze', prov: 'FI' },
+    { prefix: '161', city: 'Genova', prov: 'GE' },
+    { zip: '16100', city: 'Genova', prov: 'GE' },
+    { prefix: '901', city: 'Palermo', prov: 'PA' },
+    { zip: '90100', city: 'Palermo', prov: 'PA' },
+    { prefix: '701', city: 'Bari', prov: 'BA' },
+    { zip: '70100', city: 'Bari', prov: 'BA' },
+    { prefix: '351', city: 'Padova', prov: 'PD' },
+    { zip: '35100', city: 'Padova', prov: 'PD' },
+    { prefix: '371', city: 'Verona', prov: 'VR' },
+    { zip: '37100', city: 'Verona', prov: 'VR' },
+    { prefix: '301', city: 'Venezia', prov: 'VE' },
+    { zip: '30100', city: 'Venezia', prov: 'VE' },
+    { prefix: '341', city: 'Trieste', prov: 'TS' },
+    { zip: '34100', city: 'Trieste', prov: 'TS' },
+    { prefix: '241', city: 'Bergamo', prov: 'BG' },
+    { zip: '24100', city: 'Bergamo', prov: 'BG' },
+    { prefix: '251', city: 'Brescia', prov: 'BS' },
+    { zip: '25100', city: 'Brescia', prov: 'BS' },
+    { prefix: '431', city: 'Parma', prov: 'PR' },
+    { zip: '43100', city: 'Parma', prov: 'PR' },
+    { prefix: '411', city: 'Modena', prov: 'MO' },
+    { zip: '41100', city: 'Modena', prov: 'MO' },
+    { prefix: '091', city: 'Cagliari', prov: 'CA' },
+    { zip: '09100', city: 'Cagliari', prov: 'CA' },
+    { prefix: '951', city: 'Catania', prov: 'CT' },
+    { zip: '95100', city: 'Catania', prov: 'CT' },
+    { prefix: '981', city: 'Messina', prov: 'ME' },
+    { zip: '98100', city: 'Messina', prov: 'ME' },
+    { prefix: '381', city: 'Trento', prov: 'TN' },
+    { zip: '38100', city: 'Trento', prov: 'TN' },
+    { zip: '39100', city: 'Bolzano', prov: 'BZ' },
+    { zip: '33100', city: 'Udine', prov: 'UD' },
+    { prefix: '601', city: 'Ancona', prov: 'AN' },
+    { zip: '60100', city: 'Ancona', prov: 'AN' },
+    { prefix: '061', city: 'Perugia', prov: 'PG' },
+    { zip: '06100', city: 'Perugia', prov: 'PG' },
+    { zip: '67100', city: "L'Aquila", prov: 'AQ' },
+    { prefix: '651', city: 'Pescara', prov: 'PE' },
+    { zip: '65100', city: 'Pescara', prov: 'PE' },
+    { zip: '85100', city: 'Potenza', prov: 'PZ' },
+    { zip: '88100', city: 'Catanzaro', prov: 'CZ' },
+    { prefix: '891', city: 'Reggio Calabria', prov: 'RC' },
+    { zip: '89100', city: 'Reggio Calabria', prov: 'RC' }
+  ];
+
+  const PROVINCE_ZIP_PREFIXES = {
+    '10': 'Torino', '11': 'Aosta', '12': 'Cuneo', '13': 'Vercelli/Biella', '14': 'Asti', '15': 'Alessandria',
+    '16': 'Genova', '17': 'Savona', '18': 'Imperia', '19': 'La Spezia',
+    '20': 'Milano', '21': 'Varese', '22': 'Como', '23': 'Sondrio', '24': 'Bergamo', '25': 'Brescia', '26': 'Cremona', '27': 'Pavia', '28': 'Novara', '29': 'Piacenza',
+    '30': 'Venezia', '31': 'Treviso', '32': 'Belluno', '33': 'Udine', '34': 'Trieste', '35': 'Padova', '36': 'Vicenza', '37': 'Verona', '38': 'Trento', '39': 'Bolzano',
+    '40': 'Bologna', '41': 'Modena', '42': 'Reggio Emilia', '43': 'Parma', '44': 'Ferrara', '45': 'Rovigo', '46': 'Mantova', '47': 'Forlì-Cesena/Rimini', '48': 'Ravenna',
+    '50': 'Firenze', '51': 'Pistoia', '52': 'Arezzo', '53': 'Siena', '54': 'Massa-Carrara', '55': 'Lucca', '56': 'Pisa', '57': 'Livorno', '58': 'Grosseto', '59': 'Prato',
+    '00': 'Roma', '01': 'Viterbo', '02': 'Rieti', '03': 'Frosinone', '04': 'Latina', '05': 'Terni', '06': 'Perugia',
+    '60': 'Ancona', '61': 'Pesaro e Urbino', '62': 'Macerata', '63': 'Ascoli Piceno', '64': 'Teramo', '65': 'Pescara', '66': 'Chieti', '67': "L'Aquila",
+    '70': 'Bari', '71': 'Foggia', '72': 'Brindisi', '73': 'Lecce', '74': 'Taranto',
+    '80': 'Napoli', '81': 'Caserta', '82': 'Benevento', '83': 'Avellino', '84': 'Salerno', '85': 'Potenza', '86': 'Campobasso/Isernia', '87': 'Cosenza', '88': 'Catanzaro', '89': 'Reggio Calabria',
+    '90': 'Palermo', '91': 'Trapani', '92': 'Agrigento', '93': 'Caltanissetta', '94': 'Enna', '95': 'Catania', '96': 'Siracusa', '97': 'Ragusa', '98': 'Messina',
+    '07': 'Sassari', '08': 'Nuoro', '09': 'Cagliari'
+  };
+
+  function getKnownEntryForZip(zip) {
+    if (!zip || zip.length !== 5) return null;
+    const db = (typeof window !== 'undefined' && window.ITALIAN_CAP_DB) || {};
+    if (db[zip]) {
+      const val = db[zip];
+      const cityField = val[0];
+      const prov = val[1] || '';
+      if (Array.isArray(cityField)) {
+        return {
+          city: cityField[0], // comune principale predefinito (es. "Almese")
+          cities: cityField,  // elenco completo comuni con questo CAP (es. ["Almese", "Cumiana", ...])
+          prov,
+          zip
+        };
+      }
+      return { city: cityField, cities: [cityField], prov, zip };
+    }
+    const direct = KNOWN_CAP_CITIES.find(k => k.zip === zip);
+    if (direct) return { ...direct, cities: [direct.city] };
+    const byPrefix = KNOWN_CAP_CITIES.find(k => k.prefix && zip.startsWith(k.prefix));
+    if (byPrefix) return { ...byPrefix, cities: [byPrefix.city] };
+    return null;
+  }
+
+  function getKnownCityForZip(zip) {
+    const entry = getKnownEntryForZip(zip);
+    return entry ? entry.city : null;
+  }
+
+  // [REVISIONE] 02/11: i nomi si confrontano senza accenti, maiuscole, spazi e apostrofi.
+  // Prima "Cirie", "Forli" e "Cantu" (scritti senza accento, come capita spesso) venivano rifiutati;
+  // per "Forli" il controllo per contenimento proponeva addirittura Forlimpopoli.
+  function normCityName(name) {
+    return String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+  }
+
+  // [REVISIONE] 02/11: testo con i CAP del comune, per il messaggio di errore. Prima si citava il primo CAP
+  // trovato: per Torino "10100", che non è più in uso (i CAP di Torino vanno da 10121 a 10156).
+  function capsTextForCity(cityName, fallbackZip) {
+    const db = (typeof window !== 'undefined' && window.ITALIAN_CAP_DB) || {};
+    const target = normCityName(cityName);
+    let zips = Object.keys(db).filter(z => {
+      const field = db[z][0];
+      return (Array.isArray(field) ? field : [field]).some(item => normCityName(item) === target);
+    }).sort();
+    // Il CAP generico "…100" non si usa dove esistono i CAP per zona (es. 10100 per Torino)
+    if (zips.length > 1) zips = zips.filter(z => !z.endsWith('100'));
+    if (!zips.length) return fallbackZip ? `il CAP di ${cityName} è ${fallbackZip}` : '';
+    if (zips.length === 1) return `il CAP di ${cityName} è ${zips[0]}`;
+    if (zips.length <= 3) return `i CAP di ${cityName} sono ${zips.slice(0, -1).join(', ')} e ${zips[zips.length - 1]}`;
+    return `i CAP di ${cityName} vanno da ${zips[0]} a ${zips[zips.length - 1]}`;
+  }
+
+  function getKnownEntryForCity(cityName) {
+    if (!cityName) return null;
+    const norm = normCityName(cityName);
+    const db = (typeof window !== 'undefined' && window.ITALIAN_CAP_DB) || {};
+    // Ricerca esatta nel database completo
+    for (const [z, val] of Object.entries(db)) {
+      const cityField = val[0];
+      const prov = val[1] || '';
+      const list = Array.isArray(cityField) ? cityField : [cityField];
+      for (const item of list) {
+        const itemNorm = normCityName(item);
+        if (norm === itemNorm) {
+          return { city: item, cities: list, prov, zip: z };
+        }
+      }
+    }
+    // Ricerca per contenimento nel database
+    if (norm.length >= 4) {
+      for (const [z, val] of Object.entries(db)) {
+        const cityField = val[0];
+        const prov = val[1] || '';
+        const list = Array.isArray(cityField) ? cityField : [cityField];
+        for (const item of list) {
+          const itemNorm = normCityName(item);
+          if (norm.includes(itemNorm) || itemNorm.includes(norm)) {
+            return { city: item, cities: list, prov, zip: z };
+          }
+        }
+      }
+    }
+    const fallback = KNOWN_CAP_CITIES.find(k => {
+      const kNorm = normCityName(k.city);
+      return norm === kNorm || (norm.length >= 4 && (norm.includes(kNorm) || kNorm.includes(norm)));
+    });
+    return fallback ? { ...fallback, cities: [fallback.city] } : null;
+  }
+
+  function validateZipAndCity(zip, city) {
+    const z = (zip || '').trim();
+    const c = (city || '').trim();
+    if (!z || !c) return '';
+    if (!/^\d{5}$/.test(z)) return 'Il CAP deve essere composto da 5 cifre.';
+
+    const normCity = normCityName(c);
+    if (normCity.length < 2 || /^(.)\1{3,}$/.test(normCity) || /^(sasasa|asdf|qwer|test|prova)$/.test(normCity)) {
+      return `«${c}» non sembra una città valida. Inserisci una città reale.`;
+    }
+
+    // [REVISIONE] 02/11: un CAP inesistente (es. 12345) con una città qualsiasi (es. "Pippo") veniva accettato,
+    // perché bastava che le prime due cifre corrispondessero a una provincia. Con il database dei CAP caricato,
+    // un CAP che non c'è non è valido; il controllo per provincia resta solo se il database manca.
+    const capDb = (typeof window !== 'undefined' && window.ITALIAN_CAP_DB) || null;
+    if (capDb && capDb['10121'] && !capDb[z]) {
+      return `Il CAP ${z} non risulta tra i CAP italiani: controlla di averlo scritto bene.`;
+    }
+
+    const entryForZip = getKnownEntryForZip(z);
+    const entryForCity = getKnownEntryForCity(c);
+
+    // Se il CAP è noto nel database
+    if (entryForZip) {
+      const allowedCities = entryForZip.cities || [entryForZip.city];
+      // Verifica se la città digitata dall'utente è tra quelle che condividono questo CAP
+      const isAllowed = allowedCities.some(allowed => {
+        const normAllowed = normCityName(allowed);
+        return normCity === normAllowed || (normCity.length >= 4 && (normCity.includes(normAllowed) || normAllowed.includes(normCity)));
+      });
+
+      if (isAllowed) {
+        return ''; // La città coincide con il CAP (anche in caso di CAP condiviso tra più comuni!)
+      }
+
+      // Se non coincide con il CAP digitato:
+      // Se la città digitata ha un suo CAP noto nel database diverso da questo
+      if (entryForCity && entryForCity.zip && entryForCity.zip !== z) {
+        return `Il CAP ${z} appartiene all'area di ${entryForZip.city}${entryForZip.prov ? ' (' + entryForZip.prov + ')' : ''}, non a ${entryForCity.city} (${capsTextForCity(entryForCity.city, entryForCity.zip)}).`;
+      }
+
+      return `Il CAP ${z} appartiene all'area di ${entryForZip.city}${entryForZip.prov ? ' (' + entryForZip.prov + ')' : ''} (non coincide con «${c}»).`;
+    }
+
+    // Se il CAP non è specificamente censito nel database, controllo provinciale
+    const provPrefix = z.slice(0, 2);
+    const provName = PROVINCE_ZIP_PREFIXES[provPrefix];
+    if (!provName) {
+      return `Il CAP ${z} non corrisponde a un'area postale italiana valida.`;
+    }
+    return '';
+  }
+
   function validateField(form, el, custom) {
     const label = fieldLabel(form, el);
     const value = (el.value || '').trim();
@@ -837,8 +1357,21 @@
     }
 
     if (value) {
-      if (el.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
-        return 'Inserisci un indirizzo email valido, ad esempio nome@email.com o nome.cognome@unito.it.';
+      if (el.type === 'email') {
+        const parts = value.split('@');
+        if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+          return 'Inserisci un indirizzo email valido (es. nome@email.it o nome.cognome@unito.it).';
+        }
+        const domain = parts[1].toLowerCase().trim();
+        if (!domain.includes('.') || domain.endsWith('.')) {
+          return `Il dominio "@${domain}" non è valido o è incompleto. Inserisci un'email reale (es. @unito.it, @gmail.com, @hotmail.com, @libero.it, @outlook.com).`;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+          return 'Inserisci un indirizzo email valido (es. nome@email.it o nome.cognome@unito.it).';
+        }
+        if (!isValidEmailDomain(domain)) {
+          return `Il dominio "@${domain}" non risulta tra i provider email riconosciuti o esistenti. Inserisci un'email reale (es. @unito.it, @edu.unito.it, @gmail.com, @hotmail.com, @libero.it, @outlook.com, @yahoo.it).`;
+        }
       }
       if (el.type === 'number') {
         const num = Number(value);
@@ -904,6 +1437,11 @@
       if (el.type === 'radio') anchor.classList.remove('has-error');
     }
   }
+
+  // [REVISIONE] 02/11: tolta la funzione securePasswordField, che sui campi password bloccava copia, incolla,
+  // taglia, menu del tasto destro e selezione del testo. Non aumenta la sicurezza (NIST SP 800-63B e NCSC
+  // raccomandano di permettere l'incolla), impedisce di usare i gestori di password, con "Mostra password"
+  // non permetteva di selezionare il testo per correggerlo e ostacola il criterio WCAG 2.2 3.3.8.
 
   function enhanceForm(form, opts) {
     if (!form) return null;
@@ -983,18 +1521,25 @@
       return errors;
     }
 
-    // Ri-validazione "dal vivo" solo per i campi già toccati: l'errore resta visibile
-    // finché l'utente non lo corregge, poi sparisce subito (feedback immediato).
+    // [REVISIONE] Validazione solo all'uscita dal campo (focusout) o all'invio del modulo (submit).
+    // Durante la digitazione (input) NON si mostrano errori prematuri per consentire all'utente di
+    // completare serenamente quanto sta scrivendo (es. email o CAP a 5 cifre).
+    // Se un campo aveva già un errore mostrato (da un precedente focusout o submit) e ciò che l'utente
+    // digita lo risolve, l'errore viene rimosso immediatamente per dare conferma positiva.
     form.addEventListener('input', e => {
       const el = e.target;
-      if (touched.has(el.id || el.name) || el.getAttribute('aria-invalid') === 'true') {
-        check(el);
-        if (form.querySelector(':scope > .form-error-summary')) {
-          const remaining = controls().map(c => ({ el: c, msg: c.getAttribute('aria-invalid') === 'true' ? (document.getElementById('err-' + (c.id || c.name)) || {}).textContent : '' })).filter(x => x.msg);
-          renderSummary(remaining.map(x => ({ el: x.el, msg: x.msg.replace('⚠', '').trim() })));
+      if (el.getAttribute('aria-invalid') === 'true') {
+        const testMsg = el.type === 'radio' ? radioError(el) : validateField(form, el, options.custom);
+        if (!testMsg) {
+          showFieldError(el, '');
+          if (form.querySelector(':scope > .form-error-summary')) {
+            const remaining = controls().map(c => ({ el: c, msg: c.getAttribute('aria-invalid') === 'true' ? (document.getElementById('err-' + (c.id || c.name)) || {}).textContent : '' })).filter(x => x.msg);
+            renderSummary(remaining.map(x => ({ el: x.el, msg: x.msg.replace('⚠', '').trim() })));
+          }
         }
       }
     });
+
     form.addEventListener('change', e => {
       const el = e.target;
       if (el.type === 'radio' || el.type === 'checkbox' || el.tagName === 'SELECT') {
@@ -1002,11 +1547,14 @@
         if (el.getAttribute('aria-invalid') === 'true' || el.type === 'radio') check(el);
       }
     });
+
+    // Quando l'utente finisce di scrivere ed esce dal campo (focusout/click altrove), convalida
     form.addEventListener('focusout', e => {
       const el = e.target;
       if (!el.matches || !el.matches('input, select, textarea') || el.type === 'radio') return;
-      if ((el.value || '').trim() !== '' || touched.has(el.id || el.name)) {
-        touched.add(el.id || el.name);
+      const key = el.id || el.name || el;
+      if ((el.value || '').trim() !== '' || touched.has(key)) {
+        touched.add(key);
         check(el);
       }
     });
@@ -1040,7 +1588,14 @@
       counter.textContent = `${textarea.value.length} / ${fmtNum(textarea.maxLength)} caratteri`;
       counter.classList.toggle('near-limit', left < 100);
     };
-    textarea.insertAdjacentElement('afterend', counter);
+    const metaRow = textarea.parentNode ? textarea.parentNode.querySelector('.field-meta-row') : null;
+    if (metaRow) {
+      counter.style.margin = '0';
+      counter.style.whiteSpace = 'nowrap';
+      metaRow.appendChild(counter);
+    } else {
+      textarea.insertAdjacentElement('afterend', counter);
+    }
     textarea.addEventListener('input', update);
     update();
   }
@@ -1085,7 +1640,7 @@
             <!-- Descrizione breve e incisiva: MASSIMO 3 RIGHE con lo schema "lasci o raddoppi" -->
             <div class="hero-concise-box">
               <p class="hero-three-lines-desc">
-                <strong>CrowdUniTO</strong> è la piattaforma di crowdfunding per la ricerca dell'Università di Torino basata sul meccanismo <em>"lasci o raddoppi"</em>: se il progetto raccoglie il 100% dell'obiettivo grazie alle donazioni dei cittadini, <strong>l'Ateneo ne raddoppia l'importo</strong> erogando fino a 10.000 € di cofinanziamento a fondo perduto.
+                <strong>CrowdUniTO</strong> è la piattaforma di crowdfunding per la ricerca dell'Università di Torino basata sul meccanismo <em>"lasci o raddoppi"</em>: se il progetto raccoglie il 100% dell'obiettivo grazie alle donazioni dei cittadini, <strong>l'Ateneo ne raddoppia l'importo</strong> con un cofinanziamento a fondo perduto di pari valore.
               </p>
             </div>
 
@@ -1101,7 +1656,7 @@
               <div class="schema-step schema-unito">
                 <span class="schema-badge badge-unito">2. Università di Torino</span>
                 <strong>Raddoppia con € 10.000</strong>
-                <small>Fondi di Ateneo, max 10.000 €</small>
+                <small>Fondi di Ateneo, stessa cifra</small>
               </div>
               <div class="schema-operator">=</div>
               <div class="schema-step schema-result">
@@ -1122,7 +1677,7 @@
             </div>
             <!-- [NUOVO] Rassicurazione per chi è alla prima esperienza di crowdfunding -->
             <p class="hero-first-time-note">
-              Prima volta? <a href="#/come-funziona" class="text-link">Scopri in 2 minuti come funziona la donazione</a>: non serve registrarsi e, se il progetto non raggiunge l'obiettivo, vieni rimborsato.
+              Prima volta? <a href="#/come-funziona" class="text-link">Scopri in 2 minuti come donare</a>: non serve registrarsi e, se il progetto non raggiunge l'obiettivo, vieni rimborsato.
             </p>
           </div>
 
@@ -1140,7 +1695,7 @@
               </div>
 
               <!-- [REVISIONE] "100% Raddoppio garantito da UniTO" era fuorviante: il raddoppio scatta solo
-                   se la campagna arriva al 100% (e con un tetto di 10.000 €). Anche "34 laboratori" e
+                   se la campagna arriva al 100%. Anche "34 laboratori" e
                    "€ 425.000" erano poco plausibili per un programma con 5 progetti l'anno (Funds TOgether è
                    alla 4ª edizione). → Numeri di esempio resi verosimili. -->
               <div class="trust-numbers-grid">
@@ -1154,7 +1709,7 @@
                 </div>
                 <div class="trust-num-box">
                   <span class="trust-big-num">1:1</span>
-                  <span class="trust-lbl">Cofinanziamento UniTO al 100%, fino a 10.000 €</span>
+                  <span class="trust-lbl">Cofinanziamento UniTO quando la campagna arriva al 100%</span>
                 </div>
                 <div class="trust-num-box">
                   <span class="trust-big-num">2.900+</span>
@@ -1231,7 +1786,7 @@
               <div class="step-card-num">03</div>
               <h3 class="step-card-title">Al 100% UniTO raddoppia i fondi</h3>
               <p class="step-card-desc">
-                Se il traguardo viene raggiunto entro la scadenza, l'Ateneo versa una cifra pari a quella raccolta dai cittadini (fino a 10.000 €). Se non viene raggiunto, le donazioni vengono rimborsate.
+                Se il traguardo viene raggiunto entro la scadenza, l'Ateneo versa una cifra pari a quella raccolta dai cittadini. Se non viene raggiunto, le donazioni vengono rimborsate.
               </p>
             </div>
           </div>
@@ -1352,7 +1907,7 @@
                 </p>
                 <div class="phase-features-list">
                   <div class="feature-bullet">
-                    <strong>Tempi certi:</strong> Risposta motivata entro 15 giorni lavorativi via posta istituzionale @unito.it.
+                    <strong>Tempi certi:</strong> Risposta motivata entro 15 giorni lavorativi via email.
                   </div>
                   <div class="feature-bullet">
                     <strong>Criteri di valutazione:</strong> Chiarezza divulgativa, fattibilità economica, impatto sociale e scientifico sul territorio.
@@ -1395,12 +1950,12 @@
                      selezionati è gratuita. Se volete restare fedeli al programma reale, togliete la quota
                      qui, in Pacchetti, nelle FAQ e nella candidatura. -->
                 <p class="phase-desc">
-                  La campagna viene pubblicata ufficialmente sulla piattaforma CrowdUniTO. I servizi di gestione tecnica e hosting sono erogati a una <strong>quota trasparente di 350 € + IVA</strong> (copribile tramite fondi ordinari di ricerca del dipartimento). Se la raccolta raggiunge il 100% dell'obiettivo prefissato grazie ai sostenitori, scatta il <strong>raddoppio integrale dei fondi da parte dell'Università di Torino</strong> fino a un massimo di 10.000 € per progetto!
+                  La campagna viene pubblicata ufficialmente sulla piattaforma CrowdUniTO. I servizi di gestione tecnica e hosting sono erogati a una <strong>quota trasparente di 350 € + IVA</strong> (copribile tramite fondi ordinari di ricerca del dipartimento). Se la raccolta raggiunge il 100% dell'obiettivo prefissato grazie ai sostenitori, scatta il <strong>raddoppio integrale dei fondi da parte dell'Università di Torino</strong>!
                 </p>
                 <div class="phase-summary-pill-box">
                   <span class="summary-pill">Quota servizi: 350 € + IVA</span>
                   <span class="summary-pill">Durata campagna: 30-45 giorni</span>
-                  <span class="summary-pill highlight">Raddoppio UniTO: fino a 10.000 € al raggiungimento del 100%</span>
+                  <span class="summary-pill highlight">Raddoppio UniTO al raggiungimento del 100%</span>
                 </div>
               </div>
             </div>
@@ -1411,31 +1966,19 @@
 
       <!-- Requisiti di Candidatura & FAQ Rapida Ricercatori -->
       <section class="section-researcher-criteria">
-        <div class="container">
-          <div class="criteria-card-grid">
-            <div class="criteria-info-box">
-              <h3 class="criteria-box-title">Chi può candidarsi?</h3>
-              <ul class="criteria-list">
-                <li>Docenti ordinari e associati dell'Università degli Studi di Torino</li>
-                <li>Ricercatori a tempo indeterminato e determinato (RTT, RTDA, RTDB)</li>
-                <li>Assegnisti di ricerca e dottorandi (con l'avallo formale del Responsabile di Laboratorio o Tutor)</li>
-                <li>Personale tecnico-amministrativo coinvolto in progetti di Terza Missione e public engagement</li>
-              </ul>
-              <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                Hai dubbi sull'idoneità del tuo progetto? Consulta la nostra <a href="#/faq" class="text-link">sezione FAQ completa per ricercatori</a>.
-              </p>
-            </div>
-
-            <div class="criteria-info-box">
-              <h3 class="criteria-box-title">Cosa serve per compilare il modulo online?</h3>
-              <ul class="criteria-list">
-                <li>Titolo della proposta e settore scientifico-disciplinare (SSD)</li>
-                <!-- [REVISIONE] Qui c'era "max 2.000 battute", nel modulo "massimo 1.500 caratteri": allineato a 1.500. -->
-                <li>Abstract divulgativo comprensibile a un pubblico non accademico (max 1.500 caratteri)</li>
-                <li>Stima del budget economico necessario con indicazione della quota raddoppio</li>
-                <li>Contatto istituzionale e disponibilità a partecipare al percorso formativo obbligatorio</li>
-              </ul>
-            </div>
+        <div class="container" style="max-width: 800px;">
+          <div class="criteria-info-box">
+            <h3 class="criteria-box-title">Cosa serve per compilare il modulo online?</h3>
+            <ul class="criteria-list">
+              <li>Titolo della proposta e settore scientifico-disciplinare (SSD)</li>
+              <!-- [REVISIONE] Qui c'era "max 2.000 battute", nel modulo "massimo 1.500 caratteri": allineato a 1.500. -->
+              <li>Abstract divulgativo comprensibile a un pubblico non accademico (max 1.500 caratteri)</li>
+              <li>Stima del budget economico necessario con indicazione della quota raddoppio</li>
+              <li>Contatto di riferimento e disponibilità a partecipare al percorso formativo obbligatorio</li>
+            </ul>
+            <p style="margin-top: 1.25rem; font-size: 0.9rem; color: var(--text-secondary);">
+              Hai dubbi sulla proposta o sulla procedura? Consulta la nostra <a href="#/faq?pubblico=ricercatori" class="text-link">sezione FAQ completa per ricercatori</a>.
+            </p>
           </div>
         </div>
       </section>
@@ -1453,6 +1996,20 @@
       faseEl.classList.add('phase-highlight');
     }
   }
+  function renderCalendarDateBadge(dateStr) {
+    const parts = (dateStr || '').trim().split(/\s+/);
+    const day = parts[0] || '';
+    const month = parts[1] || '';
+    const year = parts[2] || '';
+    return `
+      <div class="calendar-date-badge">
+        <span class="cal-day">${esc(day)}</span>
+        <span class="cal-month">${esc(month)}</span>
+        <span class="cal-year">${esc(year)}</span>
+      </div>
+    `;
+  }
+
   /**
    * PAGINA 3: FORMAZIONE (Fase 1)
    * Calendario con data di inizio, modalità, iscrizione simulata.
@@ -1509,7 +2066,7 @@
           <div class="training-calendar-block" style="margin-top: 4rem;">
             <div class="section-block-header">
               <h2 class="section-title-large">Calendario delle prossime edizioni 2026/2027</h2>
-              <p class="section-sub-copy">Scegli la sessione più comoda per te e compila il modulo di iscrizione simulata sottostante.</p>
+              <p class="section-sub-copy">Scegli la sessione più comoda per te e compila il modulo di iscrizione sottostante.</p>
             </div>
 
             <div class="calendar-table-wrap">
@@ -1517,33 +2074,36 @@
                 <thead>
                   <tr>
                     <th>Edizione / Titolo</th>
-                    <th>Data d'Inizio</th>
+                    <th style="text-align: center;">Data d'Inizio</th>
                     <th>Modalità & Sede</th>
                     <th>Orario & Frequenza</th>
                     <th>Posti Disponibili</th>
-                    <th>Stato Iscrizioni</th>
+                    <th style="text-align: center;">Stato Iscrizioni</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${TRAINING_SESSIONS.map(session => {
-                    const isEnrolled = enrollments.some(e => e.sessionId === session.id);
+                    const isEnrolled = !!(currentUser && enrollments.some(e => e.sessionId === session.id && (!e.email || (currentUser.email && e.email.toLowerCase() === currentUser.email.toLowerCase()))));
                     return `
                       <tr>
                         <td>
                           <strong>${session.title}</strong><br>
                           <small style="color: var(--text-muted);">${session.instructors}</small>
                         </td>
-                        <td><span class="badge-date">${session.startDate}</span></td>
+                        <td style="text-align: center;">${renderCalendarDateBadge(session.startDate)}</td>
                         <td>${session.location}</td>
                         <td>${session.schedule}</td>
                         <td>
                           <span class="badge-seats">${isEnrolled ? session.seatsLeft - 1 : session.seatsLeft} su ${session.seatsTotal} posti liberi</span>
                         </td>
-                        <td>
+                        <td style="text-align: center; vertical-align: middle;">
                           ${isEnrolled ? `
                             <span class="status-enrolled-pill">✓ Già Iscritto</span>
+                            <button type="button" class="btn-cancel-session" data-session-id="${session.id}" title="Annulla iscrizione a questa edizione" style="display: block; margin: 0.35rem auto 0; background: none; border: none; color: #b91c1c; font-size: 0.78rem; cursor: pointer; text-decoration: underline;">
+                              Annulla iscrizione
+                            </button>
                           ` : `
-                            <button class="btn btn-sm btn-outline-burgundy btn-select-session" data-session-id="${session.id}" data-session-title="${session.title}">
+                            <button type="button" class="btn btn-sm btn-outline-burgundy btn-select-session" data-session-id="${session.id}" data-session-title="${session.title}">
                               Seleziona questa edizione
                             </button>
                           `}
@@ -1556,7 +2116,7 @@
             </div>
           </div>
 
-          <!-- Modulo di Iscrizione Simulata -->
+          <!-- Modulo di Iscrizione -->
           <div class="enrollment-form-card" id="form-iscrizione-box" style="margin-top: 3.5rem;">
             <div class="enrollment-header">
               <div class="enrollment-icon">
@@ -1579,39 +2139,18 @@
               </div>
 
               <div class="form-group">
-                <label for="enrollName">Nome e Cognome Ricercatore <span class="required">*</span></label>
-                <input type="text" id="enrollName" required class="form-control" autocomplete="name" placeholder="Es. Prof. Marco Bianchi" value="${currentUser ? esc(currentUser.name) : ''}">
+                <label for="enrollFirstName">Nome <span class="required">*</span></label>
+                <input type="text" id="enrollFirstName" required class="form-control" autocomplete="given-name" placeholder="Es. Marco" value="${currentUser ? esc(currentUser.firstName || (currentUser.name || '').split(' ')[0]) : ''}">
               </div>
 
               <div class="form-group">
+                <label for="enrollLastName">Cognome <span class="required">*</span></label>
+                <input type="text" id="enrollLastName" required class="form-control" autocomplete="family-name" placeholder="Es. Bianchi" value="${currentUser ? esc(currentUser.lastName || (currentUser.name || '').split(' ').slice(1).join(' ')) : ''}">
+              </div>
+
+              <div class="form-group form-full">
                 <label for="enrollEmail">Email <span class="required">*</span></label>
                 <input type="email" id="enrollEmail" required class="form-control" autocomplete="email" placeholder="nome.cognome@email.com o @unito.it" value="${currentUser ? esc(currentUser.email) : ''}">
-              </div>
-
-              <div class="form-group">
-                <label for="enrollDepartment">Dipartimento di Afferenza <span class="required">*</span></label>
-                <select id="enrollDepartment" required class="form-control">
-                  <option value="">-- Seleziona Dipartimento UniTO --</option>
-                  <option value="Neuroscienze">Dipartimento di Neuroscienze "Rita Levi Montalcini"</option>
-                  <option value="Scienze della Vita">Dipartimento di Scienze della Vita e Biologia dei Sistemi</option>
-                  <option value="Studi Storici">Dipartimento di Studi Storici</option>
-                  <option value="Fisica">Dipartimento di Fisica</option>
-                  <option value="Informatica">Dipartimento di Informatica</option>
-                  <option value="DISAFA">Dipartimento di Scienze Agrarie, Forestali e Alimentari (DISAFA)</option>
-                  <option value="CPS">Dipartimento di Culture, Politica e Società</option>
-                  <option value="Altro">Altro Dipartimento o Struttura Speciale UniTO</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="enrollRole">Ruolo Accademico <span class="required">*</span></label>
-                <select id="enrollRole" required class="form-control">
-                  <option value="Ordinario">Professore Ordinario</option>
-                  <option value="Associato">Professore Associato</option>
-                  <option value="Ricercatore">Ricercatore (RTT / RTDA / RTDB)</option>
-                  <option value="Assegnista">Assegnista di Ricerca</option>
-                  <option value="Dottorando">Dottorando di Ricerca</option>
-                </select>
               </div>
 
               <div class="form-group form-full">
@@ -1623,9 +2162,6 @@
                 <button type="submit" class="btn btn-primary-burgundy btn-lg" id="btnSubmitEnrollment">
                   Conferma l'iscrizione gratuita
                 </button>
-                <span class="form-side-note">
-                  Simulazione: i dati vengono salvati solo in questo browser.
-                </span>
               </div>
             </form>
           </div>
@@ -1645,37 +2181,59 @@
     const sessionBtns = container.querySelectorAll('.btn-select-session');
     const selectDropdown = container.querySelector('#enrollSessionSelect');
     sessionBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const id = btn.getAttribute('data-session-id');
         if (selectDropdown) {
           selectDropdown.value = id;
-          document.getElementById('form-iscrizione-box').scrollIntoView({ behavior: 'smooth' });
-          selectDropdown.focus();
+          const box = document.getElementById('form-iscrizione-box');
+          if (box) {
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => selectDropdown.focus({ preventScroll: true }), 250);
+          }
         }
       });
     });
 
-    // Form submit simulato
-    // [REVISIONE] Prima: fumetti nativi del browser + toast generico "Compila tutti i campi",
-    // nessun controllo sull'email @unito.it e possibilità di iscriversi due volte alla stessa edizione.
-    // → CORRETTO con enhanceForm (errori persistenti accanto ai campi) e controllo dei duplicati.
+    // Annullamento rapido iscrizione dalla tabella
+    container.querySelectorAll('.btn-cancel-session').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const sid = btn.getAttribute('data-session-id');
+        let all = readJSON(TRAINING_ENROLL_KEY, []);
+        all = all.filter(en => {
+          if (en.sessionId !== sid) return true;
+          if (currentUser && currentUser.email && en.email) {
+            return en.email.toLowerCase() !== currentUser.email.toLowerCase();
+          }
+          return false;
+        });
+        writeJSON(TRAINING_ENROLL_KEY, all);
+        showToast('Iscrizione all\'edizione annullata.', 'info');
+        renderFormazione(container);
+      });
+    });
+
+    // Form submit
     const form = container.querySelector('#trainingEnrollForm');
     enhanceForm(form, {
       custom: {
-        enrollSessionSelect: el => enrollments.some(e => e.sessionId === el.value)
+        enrollSessionSelect: el => (currentUser && enrollments.some(e => e.sessionId === el.value && (!e.email || (currentUser.email && e.email.toLowerCase() === currentUser.email.toLowerCase()))))
           ? 'Sei già iscritto a questa edizione: scegline un\'altra o controlla la tua area personale.'
           : ''
       },
       onValid: () => {
         const sessionId = selectDropdown.value;
         const session = TRAINING_SESSIONS.find(t => t.id === sessionId);
+        const firstName = container.querySelector('#enrollFirstName').value.trim();
+        const lastName = container.querySelector('#enrollLastName').value.trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(' ');
         const entry = {
           sessionId,
           sessionTitle: session ? session.title : sessionId,
-          name: container.querySelector('#enrollName').value.trim(),
+          name: fullName,
           email: container.querySelector('#enrollEmail').value.trim(),
-          dept: container.querySelector('#enrollDepartment').value,
-          role: container.querySelector('#enrollRole').value,
           enrolledAt: new Date().toISOString()
         };
         const all = readJSON(TRAINING_ENROLL_KEY, []);
@@ -1856,11 +2414,16 @@
 
             <form id="customPackageForm" class="styled-form-grid" style="margin-top: 1.5rem;">
               <div class="form-group">
-                <label for="customContactName">Nome e Cognome Referente <span class="required">*</span></label>
-                <input type="text" id="customContactName" required class="form-control" autocomplete="name" placeholder="Es. Prof.ssa Giulia Valenti">
+                <label for="customFirstName">Nome <span class="required">*</span></label>
+                <input type="text" id="customFirstName" required class="form-control" autocomplete="given-name" placeholder="Es. Giulia">
               </div>
 
               <div class="form-group">
+                <label for="customLastName">Cognome <span class="required">*</span></label>
+                <input type="text" id="customLastName" required class="form-control" autocomplete="family-name" placeholder="Es. Valenti">
+              </div>
+
+              <div class="form-group form-full">
                 <label for="customContactEmail">Email <span class="required">*</span></label>
                 <input type="email" id="customContactEmail" required class="form-control" autocomplete="email" placeholder="giulia.valenti@email.com o @unito.it">
               </div>
@@ -1886,7 +2449,7 @@
 
               <div class="form-group form-full">
                 <label for="customContactMessage">Descrizione del Progetto e Richieste Particolari <span class="required">*</span></label>
-                <textarea id="customContactMessage" required minlength="20" maxlength="1000" class="form-control" rows="3" placeholder="Indica il dipartimento promotore, se vi sono partner esterni e quali elementi desideri includere nel preventivo su misura..."></textarea>
+                <textarea id="customContactMessage" required minlength="20" maxlength="10000" class="form-control" rows="4" placeholder="Indica il dipartimento promotore, se vi sono partner esterni e quali elementi desideri includere nel preventivo su misura..."></textarea>
               </div>
 
               <div class="form-group form-full">
@@ -1898,8 +2461,7 @@
           </div>
 
           <div style="margin-top: 3rem; text-align: center;">
-            <!-- [REVISIONE] I due link portavano entrambi alla stessa pagina (inizio di "Proponi"), anche quello che prometteva la Fase 4. -->
-            <p>Sei pronto per il passaggio successivo? <a href="#/proponi?fase=4" class="text-link">Consulta la Fase 4: cofinanziamento e messa online</a> oppure torna alla <a href="#/proponi" class="text-link">panoramica del percorso</a>.</p>
+            <p>Sei pronto per il passaggio successivo? <a href="#/proponi" class="text-link">&larr; Torna alla panoramica del percorso</a> oppure <a href="#/candidatura" class="text-link">Invia la candidatura online &rarr;</a></p>
           </div>
         </div>
       </section>
@@ -1924,12 +2486,14 @@
     attachCounter(container.querySelector('#customContactMessage'));
     enhanceForm(customForm, {
       onValid: () => {
-        const name = container.querySelector('#customContactName').value.trim();
+        const firstName = container.querySelector('#customFirstName').value.trim();
+        const lastName = container.querySelector('#customLastName').value.trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(' ');
         const email = container.querySelector('#customContactEmail').value.trim();
         const ticket = 'PKG-' + Math.floor(1000 + Math.random() * 9000);
         customForm.outerHTML = successPanel(
           'Richiesta inviata',
-          `<p>Grazie ${esc(name)}, abbiamo ricevuto la richiesta n. <strong>${ticket}</strong> per il Pacchetto Personalizzato. Ti risponderemo a <strong>${esc(email)}</strong> entro 48 ore lavorative.</p>`,
+          `<p>Grazie ${esc(fullName)}, abbiamo ricevuto la richiesta n. <strong>${ticket}</strong> per il Pacchetto Personalizzato. Ti risponderemo a <strong>${esc(email)}</strong> entro 48 ore lavorative.</p>`,
           '<a href="#/proponi" class="btn btn-sm btn-outline-burgundy">Torna al percorso in 4 fasi</a>'
         );
         const panel = container.querySelector('.inline-success-panel');
@@ -1967,15 +2531,12 @@
               </div>
               <h2 class="auth-gate-title">Autenticazione richiesta per inviare una proposta</h2>
               <p class="auth-gate-desc">
-                In base alle linee guida di Ateneo, per sottomettere un progetto al comitato scientifico di CrowdUniTO è necessario autenticarsi con le proprie credenziali universitarie (SCU UniTO) o con un account Progettista.
+                In base alle linee guida di Ateneo, per sottomettere un progetto al comitato scientifico di CrowdUniTO è necessario autenticarsi con le proprie credenziali.
               </p>
               <div class="auth-gate-actions">
                 <a href="#/login?redirect=candidatura" class="btn btn-primary-burgundy btn-lg">
                   Accedi con le tue credenziali
                 </a>
-                <button class="btn btn-secondary-outline btn-lg" id="btnDemoQuickLogin">
-                  Accedi subito come Ricercatore Demo (1-Click)
-                </button>
               </div>
               <p style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
                 Non sei ancora registrato? <a href="#/registrati?redirect=candidatura" class="text-link">Registrati come progettista</a>.
@@ -1985,23 +2546,14 @@
         </section>
       `;
 
-      const demoBtn = container.querySelector('#btnDemoQuickLogin');
-      if (demoBtn) {
-        demoBtn.addEventListener('click', () => {
-          setCurrentUser({
-            name: 'Prof. Marco Bianchi',
-            email: 'marco.bianchi@unito.it',
-            role: 'Professore Associato',
-            department: 'Dipartimento di Neuroscienze "Rita Levi Montalcini"'
-          });
-          showToast('Accesso effettuato come Prof. Marco Bianchi!', 'success');
-          navigateTo('#/candidatura');
-        });
-      }
       return;
     }
 
     // SE L'UTENTE È LOGGATO: MOSTRA IL MODULO COMPLETO
+    const nameParts = (currentUser.name || '').trim().split(/\s+/);
+    const userFirstName = nameParts[0] || '';
+    const userLastName = nameParts.slice(1).join(' ') || '';
+
     container.innerHTML = `
       <section class="inner-page-hero">
         <div class="container">
@@ -2010,7 +2562,7 @@
           </div>
           <div class="user-greeting-pill">
             <span class="user-avatar-circle">👤</span>
-            <span>Connesso come <strong>${esc(currentUser.name)}</strong> (${esc(currentUser.department || 'Università di Torino')})</span>
+            <span>Connesso come <strong>${esc(currentUser.name)}</strong></span>
             <button type="button" class="btn-text-logout" id="btnLogoutInForm">Esci dall'account</button>
           </div>
           <span class="section-pre-title">FASE 2 • INVIO DELLA PROPOSTA AL COMITATO</span>
@@ -2026,7 +2578,7 @@
           <!-- [NUOVO] Bozza salvata automaticamente: chiudendo la pagina o premendo "Annulla" il lavoro non va perso
                (A1, euristica 3: nel form di IdeaGinger tornando indietro si perdevano tutti i dati). -->
           <div class="draft-status-bar" id="draftStatusBar" aria-live="polite">
-            <span id="draftStatusText">Le modifiche vengono salvate automaticamente come bozza in questo browser.</span>
+            <span id="draftStatusText">Le modifiche vengono salvate automaticamente come bozza.</span>
             <button type="button" class="btn-text-logout" id="btnClearDraft" hidden>Ricomincia da zero</button>
           </div>
           <form id="projectProposalForm" class="comprehensive-proposal-form">
@@ -2040,38 +2592,18 @@
 
               <div class="form-grid-two-cols">
                 <div class="form-group">
-                  <label for="propName">Nome e Cognome Proponente <span class="required">*</span></label>
-                  <input type="text" id="propName" required class="form-control" autocomplete="name" value="${esc(currentUser.name)}">
+                  <label for="propFirstName">Nome <span class="required">*</span></label>
+                  <input type="text" id="propFirstName" required class="form-control" autocomplete="given-name" value="${esc(userFirstName)}">
                 </div>
 
                 <div class="form-group">
-                  <label for="propEmail">Email del referente <span class="required">*</span></label>
+                  <label for="propLastName">Cognome <span class="required">*</span></label>
+                  <input type="text" id="propLastName" required class="form-control" autocomplete="family-name" value="${esc(userLastName)}">
+                </div>
+
+                <div class="form-group form-full">
+                  <label for="propEmail">Email <span class="required">*</span></label>
                   <input type="email" id="propEmail" required class="form-control" autocomplete="email" value="${esc(currentUser.email)}">
-                </div>
-
-                <div class="form-group">
-                  <label for="propDepartment">Dipartimento UniTO di Afferenza <span class="required">*</span></label>
-                  <select id="propDepartment" required class="form-control">
-                    <option value="Dipartimento di Neuroscienze" ${currentUser.department && currentUser.department.includes('Neuroscienze') ? 'selected' : ''}>Dipartimento di Neuroscienze "Rita Levi Montalcini"</option>
-                    <option value="Dipartimento di Scienze della Vita e Biologia dei Sistemi">Dipartimento di Scienze della Vita e Biologia dei Sistemi</option>
-                    <option value="Dipartimento di Studi Storici">Dipartimento di Studi Storici</option>
-                    <option value="Dipartimento di Fisica">Dipartimento di Fisica</option>
-                    <option value="Dipartimento di Informatica">Dipartimento di Informatica</option>
-                    <option value="DISAFA">Dipartimento di Scienze Agrarie, Forestali e Alimentari (DISAFA)</option>
-                    <option value="Dipartimento di Culture, Politica e Società">Dipartimento di Culture, Politica e Società</option>
-                    <option value="Altro">Altro Dipartimento</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label for="propRole">Qualifica Accademica <span class="required">*</span></label>
-                  <select id="propRole" required class="form-control">
-                    <option value="Professore Associato" selected>Professore Associato</option>
-                    <option value="Professore Ordinario">Professore Ordinario</option>
-                    <option value="Ricercatore a Tempo Determinato">Ricercatore a Tempo Determinato</option>
-                    <option value="Assegnista di Ricerca">Assegnista di Ricerca</option>
-                    <option value="Dottorando">Dottorando con nulla osta tutor</option>
-                  </select>
                 </div>
               </div>
             </fieldset>
@@ -2086,7 +2618,9 @@
               <div class="form-group form-full">
                 <label for="propTitle">Titolo della Campagna di Ricerca <span class="required">*</span></label>
                 <input type="text" id="propTitle" required minlength="10" maxlength="90" class="form-control" placeholder="Es. BioSensor: Monitoraggio della qualità dell'aria con piante sentinella">
-                <small class="form-hint">Scegli un titolo breve, chiaro e accattivante per il pubblico non specialistico.</small>
+                <div class="field-meta-row" style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.2rem; gap: 0.75rem;">
+                  <small class="form-hint" style="margin: 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.2;">Scegli un titolo breve, chiaro e accattivante per il pubblico non specialistico.</small>
+                </div>
               </div>
 
               <div class="form-grid-two-cols">
@@ -2110,7 +2644,7 @@
                 </div>
               </div>
 
-              <div class="form-group form-full">
+              <div class="form-group form-full" style="margin-top: 1.5rem;">
                 <label for="propAbstract">Abstract divulgativo (da 200 a 1.500 caratteri) <span class="required">*</span></label>
                 <!-- [REVISIONE] Il limite di 1.500 caratteri era solo scritto nell'etichetta: ora c'è maxlength + contatore. -->
                 <textarea id="propAbstract" required minlength="200" maxlength="1500" class="form-control" rows="5" placeholder="Spiega in parole semplici: qual è il problema affrontato? Come risolverà la situazione questo progetto? Perché i cittadini dovrebbero donare?"></textarea>
@@ -2132,25 +2666,31 @@
               <div class="form-grid-two-cols">
                 <div class="form-group">
                   <label for="propTargetAmount">Traguardo della Raccolta Donatori (€) <span class="required">*</span></label>
-                  <input type="number" id="propTargetAmount" required class="form-control" min="2000" max="50000" step="500" value="8000" data-msg-min="L'obiettivo minimo è 2.000 €." data-msg-max="Per obiettivi oltre 50.000 € richiedi il Pacchetto Personalizzato.">
-                  <small class="form-hint">Cifra che verrà raccolta presso sostenitori privati e cittadini.</small>
+                  <!-- [REVISIONE] 31/10: minimo abbassato da 2.000 a 500 € (si possono scegliere anche 500, 1.000 e 1.500 €).
+                       Il regolamento reale di Funds TOgether non fissa un obiettivo minimo; il passo resta di 500 €. -->
+                  <input type="number" id="propTargetAmount" required class="form-control" min="500" max="50000" step="500" value="8000" aria-describedby="propTargetHint" data-msg-min="L'obiettivo minimo è 500 €." data-msg-max="Per obiettivi oltre 50.000 € richiedi il Pacchetto Personalizzato.">
+                  <small class="form-hint" id="propTargetHint">Cifra che verrà raccolta presso sostenitori privati e cittadini: da 500 € a 50.000 €.</small>
                 </div>
 
                 <div class="form-group">
                   <label for="propMatchingAmount">Cofinanziamento Richiesto a UniTO (€)</label>
                   <input type="text" id="propMatchingAmount" readonly tabindex="-1" class="form-control readonly-input" value="€ 8.000 (raddoppio completo)">
-                  <small class="form-hint">L'Ateneo raddoppia i fondi fino a un tetto massimo di 10.000 €.</small>
+                  <small class="form-hint">Se la campagna raggiunge l'obiettivo, l'Ateneo aggiunge la stessa cifra.</small>
                 </div>
               </div>
 
-              <div class="form-group form-full">
+              <!-- [REVISIONE] 31/10: avviso non bloccante. Con obiettivi bassi il costo del pacchetto (sezione 4)
+                   è una parte importante di quanto porta la campagna: lo diciamo prima dell'invio (euristica 5). -->
+              <div class="budget-cost-note" id="propBudgetNote" hidden></div>
+
+              <div class="form-group form-full" style="margin-top: 1.5rem;">
                 <label for="propBudgetPlan">Sintesi delle Principali Voci di Spesa <span class="required">*</span></label>
                 <textarea id="propBudgetPlan" required minlength="30" maxlength="800" class="form-control" rows="3" placeholder="Es. Strumentazione e reagenti di laboratorio: 4.000 €; Borsa di ricerca studente: 4.000 €; Materiali di divulgazione ed eventi con le scuole: 2.000 €"></textarea>
               </div>
             </fieldset>
 
             <!-- SEZIONE 4: PACCHETTO DI SERVIZI SELEZIONATO -->
-            <fieldset class="form-section-fieldset">
+            <fieldset class="form-section-fieldset" id="sez-pacchetto">
               <legend class="fieldset-legend">
                 <span class="step-circle">4</span>
                 <span>Scelta Pacchetto di Accompagnamento & Trasparenza</span>
@@ -2212,18 +2752,68 @@
     const matchingOutput = container.querySelector('#propMatchingAmount');
     function updateMatching() {
       const val = parseFloat(targetInput.value) || 0;
-      const matching = Math.min(val, MATCHING_CAP);
-      matchingOutput.value = val <= 0
-        ? '—'
-        : `${fmtEur(matching)} (${matching === val ? 'raddoppio completo' : 'tetto massimo: l\'Ateneo copre il ' + Math.round(matching / val * 100) + '%'})`;
+      // [REVISIONE] 31/10: senza tetto il cofinanziamento è sempre pari all'obiettivo
+      matchingOutput.value = val <= 0 ? '—' : `${fmtEur(val)} (raddoppio completo)`;
     }
     if (targetInput && matchingOutput) {
       targetInput.addEventListener('input', updateMatching);
     }
 
+    // [REVISIONE] 31/10: avviso quando il costo del pacchetto supera il 20% di quanto porta la campagna
+    // (obiettivo + raddoppio, prima delle commissioni). Non blocca l'invio. Il Personalizzato è su preventivo: niente avviso.
+    const PACKAGE_COSTS = {
+      base: { label: 'Pacchetto Base', net: 350 },
+      avanzato: { label: 'Pacchetto Avanzato', net: 650 }
+    };
+    const VAT_RATE = 0.22;
+    const COST_WARNING_SHARE = 0.2;
+    const budgetNote = container.querySelector('#propBudgetNote');
+    const grossCost = pkg => Math.round(pkg.net * (1 + VAT_RATE));
+    const campaignTotal = target => target * 2;
+    // Obiettivo più basso (a passi di 500 €) con cui il pacchetto scende sotto la soglia
+    function okTarget(pkg) {
+      const step = Number(targetInput.step) || 500;
+      let t = Number(targetInput.min) || step;
+      while (grossCost(pkg) / campaignTotal(t) >= COST_WARNING_SHARE) t += step;
+      return t;
+    }
+    function setNoteDescribedBy(on) {
+      const ids = (targetInput.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== 'propBudgetNote');
+      if (on) ids.push('propBudgetNote');
+      targetInput.setAttribute('aria-describedby', ids.join(' '));
+    }
+    // "€ 650" non deve andare a capo tra simbolo e cifra
+    const eurNb = n => fmtEur(n).replace(' ', '\u00A0');
+    function updateBudgetNote() {
+      if (!budgetNote || !targetInput) return;
+      const target = parseFloat(targetInput.value) || 0;
+      const pkgId = (container.querySelector('input[name="selectedPackage"]:checked') || {}).value;
+      const pkg = PACKAGE_COSTS[pkgId];
+      const inRange = target >= Number(targetInput.min) && target <= Number(targetInput.max);
+      const total = campaignTotal(target);
+      const share = pkg && total > 0 ? grossCost(pkg) / total : 0;
+      const show = Boolean(pkg) && inRange && share >= COST_WARNING_SHARE;
+      budgetNote.hidden = !show;
+      setNoteDescribedBy(show);
+      if (!show) { budgetNote.innerHTML = ''; return; }
+
+      const ways = [`obiettivo da ${eurNb(okTarget(pkg))} in su`];
+      if (pkgId !== 'base') {
+        const baseOk = okTarget(PACKAGE_COSTS.base);
+        ways.push(baseOk <= target ? 'Pacchetto Base' : `Pacchetto Base con obiettivo da ${eurNb(baseOk)} in su`);
+      }
+      budgetNote.innerHTML = `
+        <p><strong>Attenzione al costo del pacchetto.</strong> Se la campagna raggiunge ${eurNb(target)}, con il raddoppio di UniTO porta ${eurNb(total)} (prima delle commissioni di pagamento).
+        Il ${pkg.label} costa ${eurNb(pkg.net)} + IVA, circa ${eurNb(grossCost(pkg))}: il ${Math.round(share * 100)}% di questa cifra.</p>
+        <p>Per scendere sotto il 20%: ${ways.join(', oppure ')}. <a href="#sez-pacchetto">Rivedi il pacchetto</a>. È solo un avviso: puoi inviare la proposta lo stesso.</p>
+      `;
+    }
+    if (targetInput) targetInput.addEventListener('input', updateBudgetNote);
+    container.querySelectorAll('input[name="selectedPackage"]').forEach(r => r.addEventListener('change', updateBudgetNote));
+
     // [NUOVO] Bozza automatica in localStorage
     const form = container.querySelector('#projectProposalForm');
-    const draftFields = ['propDepartment', 'propRole', 'propTitle', 'propCategory', 'propDuration', 'propAbstract', 'propImpact', 'propTargetAmount', 'propBudgetPlan'];
+    const draftFields = ['propFirstName', 'propLastName', 'propTitle', 'propCategory', 'propDuration', 'propAbstract', 'propImpact', 'propTargetAmount', 'propBudgetPlan'];
     const draftText = container.querySelector('#draftStatusText');
     const clearDraftBtn = container.querySelector('#btnClearDraft');
     const savedDraft = readJSON(PROPOSAL_DRAFT_KEY, null);
@@ -2240,6 +2830,7 @@
       clearDraftBtn.hidden = false;
     }
     updateMatching();
+    updateBudgetNote();
     ['propAbstract', 'propImpact', 'propBudgetPlan', 'propTitle'].forEach(id => attachCounter(container.querySelector('#' + id)));
 
     let draftTimer = null;
@@ -2293,14 +2884,18 @@
 
         const protocolNumber = 'UNITO-CROWD-2026-' + Math.floor(10000 + Math.random() * 90000);
 
+        const firstName = container.querySelector('#propFirstName')?.value.trim() || '';
+        const lastName = container.querySelector('#propLastName')?.value.trim() || '';
+        const fullName = [firstName, lastName].filter(Boolean).join(' ') || currentUser.name;
+
         // Salva la proposta nel localStorage
         const proposals = readJSON(SUBMITTED_STORAGE_KEY, []);
         proposals.unshift({
           protocol: protocolNumber,
           title,
-          proponent: currentUser.name,
+          proponent: fullName,
           email: currentUser.email,
-          department: container.querySelector('#propDepartment').value,
+          department: currentUser.department || 'Università di Torino',
           targetAmount: target,
           package: selectedPkg,
           submittedAt: new Date().toLocaleDateString('it-IT'),
@@ -2356,6 +2951,16 @@
         if (h1) { h1.setAttribute('tabindex', '-1'); h1.focus({ preventScroll: true }); }
       }
     });
+
+    // Se si arriva da "Scegli Pacchetto" in #/pacchetti, centra la visuale all'inizio del modulo
+    if (currentUser && params.get('package')) {
+      setTimeout(() => {
+        const targetEl = container.querySelector('#draftStatusBar') || container.querySelector('#projectProposalForm');
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 120);
+    }
   }
   /**
    * PAGINA 6: CERCA PROGETTI (Catalogo con ricerca live e filtri)
@@ -2368,7 +2973,7 @@
    *  - l'URL resta sincronizzato con la ricerca (si può condividere / tornare indietro).
    */
   const INFO_PAGES = [
-    { href: '#/come-funziona', title: 'Come funziona la donazione', text: 'donare donazione pagamento carta paypal bonifico satispay ricevuta raddoppio cofinanziamento tutto o niente rimborso commissioni sicurezza dati' },
+    { href: '#/come-funziona', title: 'Come donare', text: 'come donare come funziona donare donazione pagamento carta paypal bonifico satispay ricevuta raddoppio cofinanziamento tutto o niente rimborso commissioni sicurezza dati' },
     { href: '#/proponi', title: 'Proponi un progetto: il percorso in 4 fasi', text: 'proporre candidatura ricercatore docente fasi requisiti chi può valutazione comitato costi quota' },
     { href: '#/formazione', title: 'Formazione e calendario per ricercatori', text: 'formazione corso calendario iscrizione moduli edizione storytelling video' },
     { href: '#/pacchetti', title: 'Pacchetti di servizi: Base, Avanzato, Personalizzato', text: 'pacchetti costi prezzo 350 iva servizi campaign manager video grafica preventivo' },
@@ -2646,7 +3251,7 @@
 
         <ul class="panel-reassurance-list">
           <li>Non serve registrarsi</li>
-          <li>Carta, PayPal o bonifico</li>
+          <li>Carta, PayPal, Satispay o bonifico</li>
           <li>Ricevuta per la deduzione fiscale via email</li>
         </ul>
       </div>
@@ -2811,7 +3416,7 @@
                 </li>
               </ul>
               <p class="budget-matching-note">
-                Al raggiungimento dell'obiettivo l'Università aggiunge fino a <strong>${fmtEur(s.matching)}</strong>, che il team userà per ampliare la sperimentazione seguendo lo stesso piano di spesa.
+                Al raggiungimento dell'obiettivo l'Università aggiunge una cifra pari a quella raccolta (${s.reachedGoal ? 'finora' : 'almeno'} <strong>${fmtEur(s.matching)}</strong>), che il team userà per ampliare la sperimentazione seguendo lo stesso piano di spesa.
               </p>
 
               <div class="guarantee-unito-badge-box">
@@ -3002,8 +3607,7 @@
     bonifico: 'Bonifico bancario',
     satispay: 'Satispay'
   };
-  // I dati della carta restano SOLO in memoria (mai nello storage), come farebbe un sito reale.
-  const cardMemory = {};
+  // cardMemory è gestito in testa allo script per consentire il reset sicuro al cambio account
 
   function loadCheckout(p) {
     return readJSON(CHECKOUT_PREFIX + p.id, null, true);
@@ -3031,6 +3635,7 @@
 
   function renderSostieni(container, p, params) {
     const s = getProjectStats(p);
+    const currentUser = getCurrentUser();
 
     // Campagna chiusa: niente form, spiegazione e alternative (prevenzione dell'errore)
     if (!s.isOpen) {
@@ -3135,7 +3740,7 @@
             <div class="checkout-help-card">
               <strong>Hai un dubbio?</strong>
               <ul>
-                <li><a href="#/come-funziona" target="_blank" rel="noopener">Come funziona la donazione<span class="sr-only"> (si apre in una nuova scheda)</span></a></li>
+                <li><a href="#/come-funziona" target="_blank" rel="noopener">Come donare<span class="sr-only"> (si apre in una nuova scheda)</span></a></li>
                 <li><a href="#/faq?apri=tutto-o-niente" target="_blank" rel="noopener">Cosa succede se non si raggiunge l'obiettivo<span class="sr-only"> (si apre in una nuova scheda)</span></a></li>
                 <li><a href="#/assistenza?progetto=${p.id}" target="_blank" rel="noopener">Scrivi all'assistenza<span class="sr-only"> (si apre in una nuova scheda)</span></a></li>
               </ul>
@@ -3173,8 +3778,8 @@
     function drawSummary() {
       const r = currentReward();
       const amount = Number(state.amount) || 0;
-      // Quanto del contributo verrebbe raddoppiato (il tetto è 10.000 € per progetto)
-      const matchable = Math.max(0, Math.min(amount, MATCHING_CAP - s.collected));
+      // Quanto aggiunge l'Ateneo se la campagna arriva al 100% ([REVISIONE] 31/10: senza tetto, tutto il contributo)
+      const matchable = amount;
       summaryHost.innerHTML = `
         <div class="checkout-summary-card">
           <div class="cs-project">
@@ -3191,7 +3796,8 @@
           <dl class="cs-lines">
             <div><dt>La tua donazione</dt><dd>${amount >= 5 ? fmtEur(amount) : '—'}</dd></div>
             <div><dt>Ricompensa</dt><dd>${r ? esc(r.title) : 'Nessuna'}</dd></div>
-            ${state.method ? `<div><dt>Pagamento</dt><dd>${esc(PAY_METHODS[state.method])}</dd></div>` : ''}
+            ${/* [REVISIONE] 31/10: "Pagamento: PayPal" accanto all'importo sembrava una riga di ricevuta (già pagato) */ ''}
+            ${state.method ? `<div><dt>Metodo scelto</dt><dd>${esc(PAY_METHODS[state.method])}</dd></div>` : ''}
             <div class="cs-matching"><dt>Raddoppio UniTO possibile</dt><dd>${matchable > 0 ? '+ ' + fmtEur(matchable) : '—'}</dd></div>
           </dl>
           <p class="cs-note">Il raddoppio arriva solo se la campagna raggiunge l'obiettivo entro la scadenza; altrimenti la donazione ti viene rimborsata.</p>
@@ -3347,7 +3953,7 @@
 
       function refreshImpact() {
         const amount = Math.round(Number(amountInput.value)) || 0;
-        const matchable = Math.max(0, Math.min(amount, MATCHING_CAP - s.collected));
+        const matchable = amount;
         if (amount < 5) {
           impact.innerHTML = '';
           return;
@@ -3414,15 +4020,15 @@
             <!-- A1, euristica 5: Nome e Cognome erano un unico campo e "Mario" bastava a superare il controllo -->
             <div class="form-group">
               <label for="donorFirstName">Nome <span class="required">*</span></label>
-              <input type="text" id="donorFirstName" required class="form-control" autocomplete="given-name" value="${esc(state.firstName || '')}" data-msg-required="Inserisci il tuo nome: serve per la ricevuta.">
+              <input type="text" id="donorFirstName" required class="form-control" autocomplete="given-name" value="${esc(state.firstName || (currentUser ? (currentUser.firstName || (currentUser.name || '').split(' ')[0]) : ''))}" data-msg-required="Inserisci il tuo nome: serve per la ricevuta.">
             </div>
             <div class="form-group">
               <label for="donorLastName">Cognome <span class="required">*</span></label>
-              <input type="text" id="donorLastName" required class="form-control" autocomplete="family-name" value="${esc(state.lastName || '')}" data-msg-required="Inserisci il tuo cognome: serve per la ricevuta.">
+              <input type="text" id="donorLastName" required class="form-control" autocomplete="family-name" value="${esc(state.lastName || (currentUser ? (currentUser.lastName || (currentUser.name || '').split(' ').slice(1).join(' ')) : ''))}" data-msg-required="Inserisci il tuo cognome: serve per la ricevuta.">
             </div>
             <div class="form-group form-full">
               <label for="donorEmail">Email <span class="required">*</span></label>
-              <input type="email" id="donorEmail" required class="form-control" autocomplete="email" placeholder="nome@email.it" value="${esc(state.email || '')}" aria-describedby="donorEmailHint">
+              <input type="email" id="donorEmail" required class="form-control" autocomplete="email" placeholder="nome@email.it" value="${esc(state.email || (currentUser ? currentUser.email : ''))}" aria-describedby="donorEmailHint">
               <small class="form-hint" id="donorEmailHint">Qui ricevi la conferma e la ricevuta. Non serve creare un account.</small>
             </div>
           </div>
@@ -3457,16 +4063,24 @@
               <legend>Dove spediamo «${esc(r.title)}»?</legend>
               <div class="styled-form-grid">
                 <div class="form-group form-full">
-                  <label for="shipAddress">Indirizzo <span class="required">*</span></label>
-                  <input type="text" id="shipAddress" required class="form-control" autocomplete="street-address" value="${esc(state.shipAddress || '')}" placeholder="Via e numero civico">
+                  <div class="address-civic-row">
+                    <div class="form-group address-main-group">
+                      <label for="shipAddress">Indirizzo <span class="required">*</span></label>
+                      <input type="text" id="shipAddress" required class="form-control" autocomplete="address-line1" value="${esc(state.shipAddress || '')}" placeholder="Es. Via Po, Corso Francia...">
+                    </div>
+                    <div class="form-group address-civic-group">
+                      <label for="shipCivic">Civico <span class="required">*</span></label>
+                      <input type="text" id="shipCivic" required class="form-control" autocomplete="address-line2" value="${esc(state.shipCivic || '')}" placeholder="Es. 15">
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="shipZip">CAP <span class="required">*</span></label>
-                  <input type="text" id="shipZip" required inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-msg-pattern="Il CAP ha 5 cifre." class="form-control" autocomplete="postal-code" value="${esc(state.shipZip || '')}">
+                  <input type="text" id="shipZip" required inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-msg-pattern="Il CAP ha 5 cifre (es. 10124 per Torino)." class="form-control" autocomplete="postal-code" value="${esc(state.shipZip || '')}" placeholder="Es. 10124">
                 </div>
                 <div class="form-group">
                   <label for="shipCity">Città <span class="required">*</span></label>
-                  <input type="text" id="shipCity" required class="form-control" autocomplete="address-level2" value="${esc(state.shipCity || '')}">
+                  <input type="text" id="shipCity" required class="form-control" autocomplete="address-level2" value="${esc(state.shipCity || '')}" placeholder="Es. Torino">
                 </div>
               </div>
               <small class="form-hint">La ricompensa viene spedita dopo la chiusura della campagna, solo se raggiunge l'obiettivo.</small>
@@ -3514,9 +4128,10 @@
         state.message = host.querySelector('#donorMessage').value.trim();
         state.updatesOptIn = host.querySelector('#updatesOptIn').checked;
         if (needsShipping) {
-          state.shipAddress = host.querySelector('#shipAddress').value.trim();
-          state.shipZip = host.querySelector('#shipZip').value.trim();
-          state.shipCity = host.querySelector('#shipCity').value.trim();
+          state.shipAddress = (host.querySelector('#shipAddress') || {}).value ? host.querySelector('#shipAddress').value.trim() : '';
+          state.shipCivic = (host.querySelector('#shipCivic') || {}).value ? host.querySelector('#shipCivic').value.trim() : '';
+          state.shipZip = (host.querySelector('#shipZip') || {}).value ? host.querySelector('#shipZip').value.trim() : '';
+          state.shipCity = (host.querySelector('#shipCity') || {}).value ? host.querySelector('#shipCity').value.trim() : '';
         }
         saveCheckout(p, state);
       }
@@ -3525,7 +4140,86 @@
       form.addEventListener('change', collect);
       wireBack(collect);
 
+      // Auto-completamento città al completamento del CAP (5 cifre)
+      if (needsShipping) {
+        const zipEl = host.querySelector('#shipZip');
+        const cityEl = host.querySelector('#shipCity');
+        if (zipEl && cityEl) {
+          zipEl.addEventListener('input', () => {
+            const digits = zipEl.value.replace(/\D/g, '').slice(0, 5);
+            zipEl.value = digits;
+            if (digits.length === 5) {
+              const entry = getKnownEntryForZip(digits);
+              if (entry) {
+                const currentCity = (cityEl.value || '').trim();
+                const normCurrent = currentCity.toLowerCase().replace(/[^a-zàèéìòù]/g, '');
+                const alreadyValid = normCurrent && (entry.cities || [entry.city]).some(c => {
+                  const n = c.toLowerCase().replace(/[^a-zàèéìòù]/g, '');
+                  return normCurrent === n || (normCurrent.length >= 4 && (normCurrent.includes(n) || n.includes(normCurrent)));
+                });
+                if (!alreadyValid) {
+                  cityEl.value = entry.city;
+                }
+                showFieldError(cityEl, '');
+                showFieldError(zipEl, '');
+              }
+            }
+          });
+        }
+      }
+
       enhanceForm(form, {
+        custom: {
+          shipAddress: el => {
+            if (!needsShipping) return '';
+            const val = (el.value || '').trim();
+            if (!val) return 'Inserisci l\'indirizzo di spedizione.';
+            if (val.length < 4) return 'Inserisci un indirizzo valido.';
+            // Rileva digitazione casuale tipo "ajahahsakòdjasd"
+            const vowels = (val.match(/[aeiouyàèéìòù]/gi) || []).length;
+            const consonants = (val.match(/[bcdfghjklmnpqrstvwxz]/gi) || []).length;
+            if (consonants >= 8 && vowels <= 2) {
+              return 'L\'indirizzo inserito non sembra valido. Inserisci una via, corso o piazza reale (es. Via Po, Corso Francia...).';
+            }
+            if (/^(.)\1{3,}$/i.test(val) || /^(asdf|qwer|zxcv|test|prova)/i.test(val)) {
+              return 'Inserisci un indirizzo reale (es. Via Po, Corso Francia...).';
+            }
+            return '';
+          },
+          shipCivic: el => {
+            if (!needsShipping) return '';
+            const val = (el.value || '').trim();
+            if (!val) return 'Inserisci il numero civico.';
+            return '';
+          },
+          shipZip: el => {
+            if (!needsShipping) return '';
+            const val = (el.value || '').trim();
+            if (!val) return 'Inserisci il CAP.';
+            if (!/^\d{5}$/.test(val)) return 'Il CAP deve essere di 5 cifre (es. 10124 per Torino).';
+            const cityEl = host.querySelector('#shipCity');
+            const cityVal = cityEl ? cityEl.value.trim() : '';
+            if (cityVal) {
+              const err = validateZipAndCity(val, cityVal);
+              if (err) return err;
+              if (cityEl.classList.contains('input-error')) showFieldError(cityEl, '');
+            }
+            return '';
+          },
+          shipCity: el => {
+            if (!needsShipping) return '';
+            const val = (el.value || '').trim();
+            if (!val) return 'Inserisci la città.';
+            const zipEl = host.querySelector('#shipZip');
+            const zipVal = zipEl ? zipEl.value.trim() : '';
+            if (zipVal && /^\d{5}$/.test(zipVal)) {
+              const err = validateZipAndCity(zipVal, val);
+              if (err) return err;
+              if (zipEl.classList.contains('input-error')) showFieldError(zipEl, '');
+            }
+            return '';
+          }
+        },
         onValid: () => {
           collect();
           state.completed = Math.max(state.completed, 2);
@@ -3537,17 +4231,20 @@
     /* ========== PASSO 3: PAGAMENTO ========== */
     if (step === 3) {
       const card = cardMemory[p.id] || {};
+      // [REVISIONE] 31/10: tornando a questo passo il metodo scelto prima risultava già selezionato senza spiegazioni
+      // e poteva sembrare che il pagamento fosse già avvenuto (segnalato per PayPal). Ora c'è un avviso esplicito.
+      const previousMethod = state.method && PAY_METHODS[state.method] ? state.method : null;
       host.innerHTML = `
         <form id="checkoutForm" class="checkout-form">
           <fieldset class="checkout-fieldset pay-methods" data-radio-group="payMethod" data-msg-required="Scegli un metodo di pagamento per continuare.">
             <legend>Metodo di pagamento <span class="required">*</span></legend>
             <label class="choice-card">
               <input type="radio" name="payMethod" value="carta" required ${state.method === 'carta' ? 'checked' : ''}>
-              <span class="choice-body"><span class="choice-head"><strong>Carta di credito o debito</strong><span class="choice-price">immediato</span></span><small>Visa, Mastercard, Maestro. La donazione conta subito.</small></span>
+              <span class="choice-body"><span class="choice-head"><strong>Carta di credito o debito</strong><span class="choice-price">Immediato</span></span><small>Visa, Mastercard, Maestro. La donazione conta subito.</small></span>
             </label>
             <label class="choice-card">
               <input type="radio" name="payMethod" value="paypal" required ${state.method === 'paypal' ? 'checked' : ''}>
-              <span class="choice-body"><span class="choice-head"><strong>PayPal</strong><span class="choice-price">immediato</span></span><small>Alla conferma autorizzi il pagamento sul sito di PayPal.</small></span>
+              <span class="choice-body"><span class="choice-head"><strong>PayPal</strong><span class="choice-price">Immediato</span></span><small>Alla conferma autorizzi il pagamento nella finestra di PayPal.</small></span>
             </label>
             <label class="choice-card">
               <input type="radio" name="payMethod" value="bonifico" required ${state.method === 'bonifico' ? 'checked' : ''}>
@@ -3555,13 +4252,20 @@
             </label>
             <label class="choice-card">
               <input type="radio" name="payMethod" value="satispay" required ${state.method === 'satispay' ? 'checked' : ''}>
-              <span class="choice-body"><span class="choice-head"><strong>Satispay</strong><span class="choice-price">immediato</span></span>
-                <small>Paga direttamente con la tua app Satispay (simulato nel prototipo).</small></span>
+              <span class="choice-body"><span class="choice-head"><strong>Satispay</strong><span class="choice-price">Immediato</span></span>
+                <small>Paga direttamente con la tua app Satispay.</small></span>
             </label>
           </fieldset>
+          <!-- [REVISIONE] 31/10: "immediato" (in bordeaux, dove al passo 1 ci sono gli importi) sembrava uno stato
+               ("già pagato"); ora dice "conta subito", cioè quando la donazione entra nella raccolta. -->
+          ${previousMethod ? `
+            <p class="pay-previous-note" id="payPreviousNote" role="status">
+              Metodo scelto in precedenza: <strong>${esc(PAY_METHODS[previousMethod])}</strong>.
+              Non è stato addebitato nulla: il pagamento avviene solo alla conferma finale. Puoi cambiarlo qui sopra.
+            </p>` : ''}
 
           <div class="pay-details" id="payDetails-carta" ${state.method === 'carta' ? '' : 'hidden'}>
-            <p class="pay-test-note">Pagamento simulato: puoi usare il numero di prova <strong>4242 4242 4242 4242</strong>, una scadenza futura e un CVC qualsiasi.</p>
+            <p class="pay-test-note">Per testare il pagamento puoi usare anche il numero di prova <strong>4242 4242 4242 4242</strong>, con una scadenza futura e un CVC qualsiasi.</p>
             <div class="styled-form-grid">
               <div class="form-group form-full">
                 <label for="cardName">Intestatario della carta <span class="required">*</span></label>
@@ -3582,13 +4286,15 @@
             </div>
           </div>
           <div class="pay-details info" id="payDetails-paypal" ${state.method === 'paypal' ? '' : 'hidden'}>
-            <p>Dopo il riepilogo, alla conferma si aprirebbe PayPal per autorizzare il pagamento (simulato in questo prototipo).</p>
+            <p>Dopo il riepilogo, premendo «Conferma» si apre la finestra di PayPal per autorizzare il pagamento. <strong>Fino a quel momento non viene addebitato nulla.</strong></p>
           </div>
           <div class="pay-details info" id="payDetails-bonifico" ${state.method === 'bonifico' ? '' : 'hidden'}>
             <p>Dopo la conferma ti mostreremo <strong>IBAN, causale e importo da versare</strong> e te li invieremo via email. Fino all'arrivo del bonifico la donazione risulterà <strong>«in attesa»</strong> e non verrà conteggiata nella raccolta.</p>
           </div>
+          <!-- [REVISIONE] 02/11: come per PayPal, il testo prometteva un passaggio (la notifica nell'app) che non avveniva:
+               dopo "Conferma" la donazione risultava subito fatta. Ora al passo 4 si apre la finestra di autorizzazione. -->
           <div class="pay-details info" id="payDetails-satispay" ${state.method === 'satispay' ? '' : 'hidden'}>
-            <p>Alla conferma riceverai la richiesta di pagamento nell'app Satispay (simulato).</p>
+            <p>Dopo il riepilogo, premendo «Conferma» si apre la finestra di Satispay per autorizzare il pagamento. <strong>Fino a quel momento non viene addebitato nulla.</strong></p>
           </div>
 
           <div class="checkout-actions">
@@ -3606,6 +4312,9 @@
       host.querySelectorAll('input[name="payMethod"]').forEach(radio => {
         radio.addEventListener('change', () => {
           state.method = radio.value;
+          // La nota sulla scelta precedente non serve più quando si sceglie di nuovo
+          const prevNote = host.querySelector('#payPreviousNote');
+          if (prevNote) prevNote.remove();
           Object.keys(PAY_METHODS).forEach(key => {
             const box = host.querySelector('#payDetails-' + key);
             if (box) box.hidden = key !== radio.value;
@@ -3674,8 +4383,11 @@
       const r = currentReward();
       const card = cardMemory[p.id] || {};
       const isTransfer = state.method === 'bonifico';
+      // [REVISIONE] 02/11: PayPal e Satispay hanno lo stesso passaggio di autorizzazione
+      const isWallet = state.method === 'paypal' || state.method === 'satispay';
+      const walletName = PAY_METHODS[state.method] || '';
       const last4 = (card.number || '').replace(/\s/g, '').slice(-4);
-      const matchable = Math.max(0, Math.min(state.amount, MATCHING_CAP - s.collected));
+      const matchable = state.amount;
       const shownName = state.visibility === 'anonimo' ? 'Anonimo' : `${state.firstName} ${(state.lastName || '').charAt(0)}.`;
 
       host.innerHTML = `
@@ -3694,7 +4406,7 @@
               <div><dt>Email</dt><dd>${esc(state.email)}</dd></div>
               <div><dt>Tra i sostenitori</dt><dd>${esc(shownName)}</dd></div>
               <div><dt>Ricevuta per la deduzione</dt><dd>${state.wantReceipt ? 'Sì, con codice fiscale ' + esc(state.cf) : 'Ricevuta semplice'}</dd></div>
-              ${r && r.shipping ? `<div><dt>Spedizione</dt><dd>${esc(state.shipAddress)}, ${esc(state.shipZip)} ${esc(state.shipCity)}</dd></div>` : ''}
+              ${r && r.shipping ? `<div><dt>Spedizione</dt><dd>${esc(state.shipAddress)}${state.shipCivic ? ' ' + esc(state.shipCivic) : ''}, ${esc(state.shipZip)} ${esc(state.shipCity)}</dd></div>` : ''}
               ${state.message ? `<div><dt>Messaggio al team</dt><dd>"${esc(state.message)}"</dd></div>` : ''}
             </dl>
           </section>
@@ -3714,7 +4426,9 @@
         <ul class="review-after">
           ${isTransfer
             ? '<li>Dopo la conferma vedrai IBAN e causale: la donazione resterà <strong>in attesa</strong> finché il bonifico non arriva.</li>'
-            : '<li>L\'importo viene addebitato subito e riceverai la ricevuta via email.</li>'}
+            : isWallet
+              ? `<li>Premendo «Conferma» si apre la finestra di ${esc(walletName)}: il pagamento avviene <strong>solo quando lo autorizzi</strong>. Poi riceverai la ricevuta via email.</li>`
+              : '<li>L\'importo viene addebitato subito e riceverai la ricevuta via email.</li>'}
           <li>Se la campagna raggiunge l'obiettivo, l'Università aggiunge ${matchable > 0 ? fmtEur(matchable) : 'il cofinanziamento'} grazie al tuo contributo.</li>
           <li>Se non lo raggiunge, ti rimborsiamo l'intero importo senza che tu debba fare nulla.</li>
         </ul>
@@ -3729,7 +4443,7 @@
           <div class="checkout-actions">
             <button type="button" class="btn btn-ghost" data-go-back>&larr; Indietro</button>
             <button type="submit" class="btn btn-green-cta btn-lg" id="btnConfirmDonation">
-              ${isTransfer ? `Conferma e ricevi i dati per il bonifico` : `Conferma la donazione di ${fmtEur(state.amount)}`}
+              ${isTransfer ? `Conferma e ricevi i dati per il bonifico` : isWallet ? `Conferma e autorizza con ${esc(walletName)} (${fmtEur(state.amount)})` : `Conferma la donazione di ${fmtEur(state.amount)}`}
             </button>
           </div>
         </form>
@@ -3740,8 +4454,92 @@
       privacy.addEventListener('change', () => { state.acceptPrivacy = privacy.checked; saveCheckout(p, state); });
       wireBack(null);
 
+      // [REVISIONE] 31/10: con PayPal la donazione risultava confermata subito dopo "Conferma", senza nessun passaggio
+      // su PayPal: sembrava che PayPal avesse pagato da solo. Ora si apre una finestra di autorizzazione (simulata):
+      // la donazione viene registrata solo con "Autorizza pagamento"; con "Annulla" (o Esc) non succede nulla e i dati restano.
+      // La finestra non chiede credenziali e non imita la grafica di PayPal.
+      // [REVISIONE] 02/11: la stessa finestra vale ora anche per Satispay (prima con Satispay la donazione era
+      // confermata subito). Le classi .paypal-sim-* del CSS sono riusate così come sono.
+      function openWalletAuthorization() {
+        const confirmBtn = host.querySelector('#btnConfirmDonation');
+        const oldNote = host.querySelector('#paypalCancelNote');
+        if (oldNote) oldNote.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'paypal-sim-backdrop';
+        overlay.innerHTML = `
+          <div class="paypal-sim-dialog" role="dialog" aria-modal="true" aria-labelledby="paypalSimTitle" aria-describedby="paypalSimDesc">
+            <h2 id="paypalSimTitle">Autorizza il pagamento con ${esc(walletName)}</h2>
+            <p id="paypalSimDesc">Verifica i dati della transazione e premi «Autorizza pagamento» per completare la donazione.</p>
+            <dl class="paypal-sim-lines">
+              <div><dt>Importo</dt><dd><strong>${fmtEur(state.amount)}</strong></dd></div>
+              <div><dt>Destinatario</dt><dd>Università degli Studi di Torino – CrowdUniTO</dd></div>
+              <div><dt>Progetto</dt><dd>${esc(shortTitle(p))}</dd></div>
+            </dl>
+            <div class="paypal-sim-actions">
+              <button type="button" class="btn btn-ghost" data-paypal-cancel>Annulla</button>
+              <button type="button" class="btn btn-green-cta" data-paypal-ok>Autorizza pagamento di ${fmtEur(state.amount)}</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        const okBtn = overlay.querySelector('[data-paypal-ok]');
+        const cancelBtn = overlay.querySelector('[data-paypal-cancel]');
+        okBtn.focus();
+
+        function close() {
+          document.removeEventListener('keydown', onKey);
+          overlay.remove();
+        }
+        function cancel() {
+          close();
+          // Esito visibile e persistente accanto al pulsante: nessun addebito, si può riprovare o cambiare metodo
+          const note = document.createElement('p');
+          note.id = 'paypalCancelNote';
+          note.className = 'pay-previous-note warn';
+          note.setAttribute('role', 'status');
+          note.innerHTML = 'Pagamento con ' + esc(walletName) + ' <strong>non autorizzato</strong>: non è stato addebitato nulla. Puoi riprovare oppure <a href="#/sostieni/' + p.id + '?passo=3">scegliere un altro metodo</a>.';
+          const actions = host.querySelector('.checkout-actions');
+          if (actions) actions.insertAdjacentElement('beforebegin', note);
+          if (confirmBtn) confirmBtn.focus();
+        }
+        function onKey(e) {
+          if (e.key === 'Escape') { cancel(); return; }
+          if (e.key === 'Tab') {
+            // Il focus resta dentro la finestra finché è aperta
+            const items = [cancelBtn, okBtn].filter(b => !b.disabled);
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }
+        document.addEventListener('keydown', onKey);
+        overlay.addEventListener('click', e => { if (e.target === overlay && !okBtn.disabled) cancel(); });
+        cancelBtn.addEventListener('click', cancel);
+        okBtn.addEventListener('click', () => {
+          okBtn.disabled = true;
+          cancelBtn.disabled = true;
+          okBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Autorizzazione in corso…';
+          setTimeout(() => {
+            close();
+            finalizeDonation();
+          }, 900);
+        });
+        onLeavePage(() => { if (document.body.contains(overlay)) close(); });
+      }
+
       enhanceForm(form, {
         onValid: () => {
+          if (isWallet) {
+            openWalletAuthorization();
+          } else {
+            finalizeDonation();
+          }
+        }
+      });
+
+      function finalizeDonation() {
           const btn = host.querySelector('#btnConfirmDonation');
           // Feedback durante l'elaborazione (euristica 1) e niente doppio invio
           btn.disabled = true;
@@ -3781,8 +4579,7 @@
             delete cardMemory[p.id];
             navigateTo('#/conferma/' + donation.id);
           }, 1200);
-        }
-      });
+      }
     }
 
     drawSummary();
@@ -3821,7 +4618,10 @@
     const pending = d.status === 'in_attesa_bonifico';
     const causale = `CrowdUniTO ${d.id} ${shortTitle(p)}`;
     const iban = 'IT60 X054 2811 1010 0000 0123 456';
-    const methodLabel = d.method === 'carta' && d.cardLast4 ? `Carta che termina con ${d.cardLast4}` : PAY_METHODS[d.method];
+    // [REVISIONE] 31/10: per PayPal si specifica che il pagamento è stato autorizzato (nella finestra del passo 4)
+    const methodLabel = d.method === 'carta' && d.cardLast4
+      ? `Carta che termina con ${d.cardLast4}`
+      : (d.method === 'paypal' || d.method === 'satispay') ? PAY_METHODS[d.method] + ' (pagamento autorizzato)' : PAY_METHODS[d.method];
     const projectUrl = window.location.href.split('#')[0] + '#/progetto/' + p.id;
 
     container.innerHTML = `
@@ -3852,8 +4652,8 @@
               </dl>
               <p class="transfer-note">Abbiamo inviato questi dati anche a <strong>${esc(d.email)}</strong>. Se il bonifico non arriva entro la scadenza la donazione viene annullata, senza costi.</p>
               <div class="prototype-control">
-                <span>Solo per provare il prototipo:</span>
-                <button type="button" class="btn btn-sm btn-outline-burgundy" id="btnSimulateTransfer">Simula l'arrivo del bonifico</button>
+                <span>Test rapido:</span>
+                <button type="button" class="btn btn-sm btn-outline-burgundy" id="btnSimulateTransfer">Conferma ricezione bonifico</button>
               </div>
             </section>
           ` : ''}
@@ -3949,13 +4749,11 @@
   }
   /**
    * PAGINA 8: FAQ (Domande Frequenti)
-   * [REVISIONE] Riscritta a partire dai dati FAQ_ITEMS:
-   *  - A1, euristica 8 (sev. 2): FAQ come lungo elenco senza temi → divise per pubblico e per argomento;
-   *  - A1, euristica 10 (sev. 3): poche risposte per chi dona → aggiunte quelle su come si dona, pagamenti,
-   *    bonifico, commissioni, dati personali, dopo la donazione;
-   *  - le schede usavano role="tablist" senza tab/tabpanel → pulsanti con aria-pressed;
-   *  - l'accordion non comunicava lo stato aperto/chiuso → aria-expanded + aria-controls;
-   *  - #/faq?apri=<id> apre direttamente una risposta (usato da footer, ricerca e checkout).
+   * Include:
+   *  - Barra di ricerca live con filtraggio in tempo reale su domande, risposte e categorie;
+   *  - Schede per pubblico (Sostenitori / Ricercatori) e gruppi tematici;
+   *  - Accordion accessibile (aria-expanded, aria-controls);
+   *  - #/faq?apri=<id> apre direttamente una risposta.
    */
   function renderFaq(container, params) {
     const openId = params.get('apri');
@@ -4046,17 +4844,53 @@
     });
 
     if (openItem) {
-      const el = container.querySelector('#faq-' + openItem.id);
-      if (el) setTimeout(() => {
-        el.scrollIntoView({ block: 'start' });
-        const btn = el.querySelector('.accordion-header');
-        if (btn) btn.focus({ preventScroll: true });
-      }, 60);
+      // Assicura che la tab attiva sia quella corretta per la domanda richiesta
+      if (audience !== openItem.audience) {
+        audience = openItem.audience;
+        tabs.forEach(t => {
+          const on = t.getAttribute('data-audience') === audience;
+          t.classList.toggle('active', on);
+          t.setAttribute('aria-pressed', String(on));
+        });
+        const sost = container.querySelector('#faq-sostenitori');
+        const ric = container.querySelector('#faq-ricercatori');
+        if (sost) sost.hidden = audience !== 'sostenitori';
+        if (ric) ric.hidden = audience !== 'ricercatori';
+      }
+
+      const scrollToTarget = () => {
+        const el = container.querySelector('#faq-' + openItem.id);
+        if (el) {
+          el.classList.add('open');
+          const btn = el.querySelector('.accordion-header');
+          if (btn) btn.setAttribute('aria-expanded', 'true');
+
+          const headerHeight = 120;
+          const rect = el.getBoundingClientRect();
+          const visibleAreaHeight = window.innerHeight - headerHeight;
+          // Centra verticalmente la domanda nell'area visibile tra l'header e il fondo dello schermo
+          const idealTopOffset = headerHeight + Math.max(40, (visibleAreaHeight - rect.height) / 2);
+          const targetY = rect.top + window.pageYOffset - idealTopOffset;
+
+          window.scrollTo({
+            top: Math.max(0, targetY),
+            behavior: 'smooth'
+          });
+
+          el.classList.add('faq-highlighted');
+          setTimeout(() => el.classList.remove('faq-highlighted'), 3000);
+
+          if (btn) btn.focus({ preventScroll: true });
+        }
+      };
+
+      setTimeout(scrollToTarget, 60);
+      requestAnimationFrame(() => setTimeout(scrollToTarget, 150));
     }
   }
 
   /**
-   * [NUOVO] PAGINA: COME FUNZIONA (per chi sostiene)
+   * [NUOVO] PAGINA: COME DONARE (per chi sostiene) — [REVISIONE] 31/10: prima si chiamava "Come funziona"
    * A1, euristica 10 (sev. 3): in IdeaGinger "Come funziona" e le FAQ erano pensate per il progettista;
    * chi dona non trovava come si svolge la donazione, quali passaggi, come vengono trattati i dati.
    * A1, euristica 4 (sev. 2): metodi di pagamento promessi ma non sempre disponibili → tabella con le regole.
@@ -4067,9 +4901,9 @@
     container.innerHTML = `
       <section class="inner-page-hero">
         <div class="container">
-          ${breadcrumb([{ href: '#/home', label: 'Home' }, { label: 'Come funziona' }])}
+          ${breadcrumb([{ href: '#/home', label: 'Home' }, { label: 'Come donare' }])}
           <span class="section-pre-title">PER CHI SOSTIENE LA RICERCA</span>
-          <h1 class="page-main-heading">Come funziona: sostenere un progetto in 4 passi</h1>
+          <h1 class="page-main-heading">Come donare: 4 passi per sostenere un progetto</h1>
           <p class="page-intro-lead">
             Non serve registrarsi e bastano un paio di minuti. Se il progetto raggiunge l'obiettivo l'Università raddoppia quanto raccolto; se non lo raggiunge, ti rimborsiamo.
           </p>
@@ -4092,7 +4926,7 @@
             <li class="step-card">
               <div class="step-card-num">03</div>
               <h2 class="step-card-title">Inserisci i dati e paga</h2>
-              <p class="step-card-desc">Nome, cognome ed email per la ricevuta. Carta, PayPal o bonifico. Prima di confermare vedi un riepilogo.</p>
+              <p class="step-card-desc">Nome, cognome ed email per la ricevuta. Carta, PayPal, Satispay o bonifico. Prima di confermare vedi un riepilogo.</p>
             </li>
             <li class="step-card highlight">
               <div class="step-card-num">04</div>
@@ -4108,8 +4942,8 @@
           <div>
             <span class="section-pre-title">LASCI O RADDOPPI</span>
             <h2 class="section-title-large">Il cofinanziamento dell'Università</h2>
-            <p>Quando una campagna raggiunge il 100% dell'obiettivo entro la scadenza, l'Università di Torino aggiunge una cifra pari a quella raccolta, fino a un massimo di 10.000 € per progetto.</p>
-            <p>Prova con un esempio: <strong>${esc(example.title.split(':')[0])}</strong> ha un obiettivo di ${fmtEur(example.target)}.</p>
+            <p>Quando una campagna raggiunge il 100% dell'obiettivo entro la scadenza, l'Università di Torino aggiunge una cifra pari a quella raccolta, raddoppiando l'impatto.</p>
+            <p>Inserisci un importo nel calcolatore per scoprire quanto aggiunge l'Ateneo e l'impatto totale generato per la ricerca.</p>
           </div>
           <div class="calc-card">
             <label for="calcAmount"><strong>Se dono…</strong></label>
@@ -4131,7 +4965,7 @@
               <h3>L'obiettivo è raggiunto</h3>
               <ul>
                 <li>Il team riceve i fondi raccolti.</li>
-                <li>L'Università aggiunge il cofinanziamento (fino a 10.000 €).</li>
+                <li>L'Università aggiunge un cofinanziamento pari a quanto raccolto.</li>
                 <li>Le ricompense vengono consegnate o spedite.</li>
               </ul>
             </div>
@@ -4161,7 +4995,7 @@
                 <tr><th scope="row">Carta di credito o debito</th><td>Subito</td><td>I dati della carta non vengono salvati dalla piattaforma.</td></tr>
                 <tr><th scope="row">PayPal</th><td>Subito</td><td>Autorizzi il pagamento sul sito di PayPal.</td></tr>
                 <tr><th scope="row">Bonifico bancario</th><td>Quando arriva il bonifico (1-2 giorni lavorativi)</td><td>Hai 5 giorni per pagare; fino ad allora la donazione risulta «in attesa».</td></tr>
-                <tr><th scope="row">Satispay</th><td>Subito</td><td>Paga direttamente con la tua app Satispay (simulato nel prototipo).</td></tr>
+                <tr><th scope="row">Satispay</th><td>Subito</td><td>Paga direttamente con la tua app Satispay.</td></tr>
               </tbody>
             </table>
           </div>
@@ -4202,8 +5036,7 @@
         out.innerHTML = '<p class="calc-warning">L\'importo minimo è 5 €.</p>';
         return;
       }
-      const s = getProjectStats(example);
-      const matchable = Math.max(0, Math.min(amount, MATCHING_CAP - s.collected));
+      const matchable = amount;
       out.innerHTML = `
         <p>Se la campagna raggiunge l'obiettivo, l'Università aggiunge <strong>${fmtEur(matchable)}</strong>.</p>
         <p class="calc-total">Alla ricerca arrivano <strong>${fmtEur(amount + matchable)}</strong>.</p>
@@ -4217,10 +5050,18 @@
   /**
    * [NUOVO] PAGINA: ASSISTENZA (#/assistenza)
    * A1, euristica 10 (sev. 2): mancava un modo diretto per chiedere aiuto/aprire un ticket; bisognava cercare
-   * la pagina Contatti e scrivere un'email. Raggiungibile dalla barra in alto, dal footer, dalle FAQ e dal checkout.
+   * la pagina Contatti e scrivere un'email. Raggiungibile dal footer, dalle FAQ e dal checkout ([REVISIONE] 31/10: tolta dalla barra in alto).
    */
   function renderAssistenza(container, params) {
     const preProject = getProjectById(params.get('progetto') || '');
+    const isFaqDomanda = params.get('motivo') === 'faq_domanda';
+    const initialQuestion = (params.get('domanda') || '').trim();
+    let defaultMsg = '';
+    if (initialQuestion) {
+      defaultMsg = initialQuestion.length >= 20
+        ? initialQuestion
+        : `Vorrei avere informazioni riguardo a: ${initialQuestion}`;
+    }
 
     container.innerHTML = `
       <section class="inner-page-hero">
@@ -4228,7 +5069,7 @@
           ${breadcrumb([{ href: '#/home', label: 'Home' }, { label: 'Assistenza' }])}
           <span class="section-pre-title">SUPPORTO</span>
           <h1 class="page-main-heading">Assistenza: come possiamo aiutarti?</h1>
-          <p class="page-intro-lead">Prima di scriverci, guarda se la risposta è tra queste. Altrimenti apri una richiesta: ti risponde l'Ufficio Terza Missione &amp; Crowdfunding.</p>
+          <p class="page-intro-lead">Prima di scriverci, guarda se la risposta è tra quelle rapide. Altrimenti apri un ticket: ti risponde l'Ufficio Terza Missione &amp; Crowdfunding.</p>
         </div>
       </section>
 
@@ -4246,22 +5087,32 @@
             </div>
 
             <div class="enrollment-form-card" id="ticketBox">
+              ${isFaqDomanda ? `
+                <div class="faq-ticket-callout">
+                  <h3>💬 Fai la tua domanda allo staff di CrowdUniTO</h3>
+                  <p>Non hai trovato la risposta tra le FAQ? Compila il modulo qui sotto con la tua domanda o richiesta di chiarimento: l'Ufficio Terza Missione &amp; Crowdfunding ti risponderà via email entro 2 giorni lavorativi.</p>
+                </div>
+              ` : ''}
+
               <h2 class="enrollment-title">Apri una richiesta di assistenza</h2>
               <p class="enrollment-desc">I campi con <span class="required">*</span> sono obbligatori.</p>
               <form id="ticketForm" class="styled-form-grid">
-                <fieldset class="checkout-fieldset compact form-full" data-radio-group="ticketWho" data-msg-required="Indica chi sei: ci aiuta a smistare la richiesta.">
-                  <legend>Chi sei? <span class="required">*</span></legend>
-                  <div class="inline-radios">
-                    <label><input type="radio" name="ticketWho" value="sostenitore" required ${preProject ? 'checked' : ''}> Donatore</label>
-                    <label><input type="radio" name="ticketWho" value="ricercatore" required> Ricercatore o docente UniTO</label>
-                    <label><input type="radio" name="ticketWho" value="altro" required> Altro</label>
-                  </div>
-                </fieldset>
+                <div class="form-group form-full">
+                  <fieldset class="checkout-fieldset compact" data-radio-group="ticketWho">
+                    <legend>Chi sei?</legend>
+                    <div class="inline-radios">
+                      <label><input type="radio" name="ticketWho" value="sostenitore" checked> Donatore</label>
+                      <label><input type="radio" name="ticketWho" value="progettista"> Progettista</label>
+                      <label><input type="radio" name="ticketWho" value="altro"> Altro</label>
+                    </div>
+                  </fieldset>
+                </div>
 
                 <div class="form-group">
                   <label for="ticketTopic">Argomento <span class="required">*</span></label>
                   <select id="ticketTopic" required class="form-control">
                     <option value="">-- Scegli l'argomento --</option>
+                    <option value="faq_domanda" ${isFaqDomanda ? 'selected' : ''}>Domanda non presente nelle FAQ</option>
                     <option value="pagamento" ${preProject ? 'selected' : ''}>Donazione e pagamenti</option>
                     <option value="ricevuta">Ricevuta e deduzione fiscale</option>
                     <option value="progetto">Domanda su un progetto</option>
@@ -4281,17 +5132,22 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="ticketName">Nome e cognome <span class="required">*</span></label>
-                  <input type="text" id="ticketName" required class="form-control" autocomplete="name">
+                  <label for="ticketFirstName">Nome <span class="required">*</span></label>
+                  <input type="text" id="ticketFirstName" required class="form-control" autocomplete="given-name">
                 </div>
                 <div class="form-group">
+                  <label for="ticketLastName">Cognome <span class="required">*</span></label>
+                  <input type="text" id="ticketLastName" required class="form-control" autocomplete="family-name">
+                </div>
+
+                <div class="form-group form-full">
                   <label for="ticketEmail">Email per la risposta <span class="required">*</span></label>
                   <input type="email" id="ticketEmail" required class="form-control" autocomplete="email" placeholder="nome@email.it">
                 </div>
 
                 <div class="form-group form-full">
                   <label for="ticketMessage">Descrivi il problema o la domanda <span class="required">*</span></label>
-                  <textarea id="ticketMessage" required minlength="20" maxlength="1000" rows="5" class="form-control" placeholder="Es. Ho scelto il bonifico ma non trovo più la causale da indicare."></textarea>
+                  <textarea id="ticketMessage" required minlength="10" maxlength="1000" rows="5" class="form-control" placeholder="Es. Vorrei sapere se posso ricevere una ricevuta intestata alla mia azienda.">${esc(defaultMsg)}</textarea>
                 </div>
 
                 <div class="form-group form-full">
@@ -4333,6 +5189,17 @@
         if (panel) { panel.scrollIntoView({ block: 'center' }); panel.focus({ preventScroll: true }); }
       }
     });
+
+    if (isFaqDomanda) {
+      setTimeout(() => {
+        const box = container.querySelector('#ticketBox');
+        if (box) {
+          box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const target = defaultMsg ? container.querySelector('#ticketFirstName') : container.querySelector('#ticketMessage');
+          if (target) target.focus({ preventScroll: true });
+        }
+      }, 100);
+    }
   }
   const ALLOWED_REDIRECTS = ['home', 'candidatura', 'profilo', 'formazione', 'proponi'];
 
@@ -4369,11 +5236,6 @@
               <strong>Vuoi solo donare?</strong> Non serve un account: <a href="#/cerca">scegli un progetto</a> e dona come ospite.
             </div>
 
-          
-
-
-  
-
             <form id="loginForm" class="styled-form-grid">
               <div class="form-group form-full">
                 <label for="loginEmail">Email <span class="required">*</span></label>
@@ -4408,23 +5270,16 @@
       </section>
     `;
 
-    function doLogin(name, email, dept) {
+    function doLogin(name, email) {
       setCurrentUser({
         name,
-        email,
-        role: 'Professore Associato',
-        department: dept || 'Dipartimento di Neuroscienze "Rita Levi Montalcini"'
+        email
       });
       showToast(`Benvenuto, ${name}!`, 'success');
       navigateTo('#/' + redirect);
     }
 
-    const demoBtn = container.querySelector('#btnQuickDemoLogin');
-    if (demoBtn) {
-      demoBtn.addEventListener('click', () => {
-        doLogin('Prof. Marco Bianchi', 'marco.bianchi@unito.it', 'Dipartimento di Neuroscienze "Rita Levi Montalcini"');
-      });
-    }
+
 
     const pwd = container.querySelector('#loginPassword');
     const showPwd = container.querySelector('#showPassword');
@@ -4532,23 +5387,24 @@
               </div>
 
               <div class="form-group form-full">
-                <label for="regDept">Dipartimento di afferenza <span class="required">*</span></label>
-                <select id="regDept" required class="form-control">
-                  <option value="">-- Seleziona il dipartimento --</option>
-                  <option value="Dipartimento di Scienze della Vita">Dipartimento di Scienze della Vita</option>
-                  <option value="Dipartimento di Neuroscienze">Dipartimento di Neuroscienze</option>
-                  <option value="Dipartimento di Fisica">Dipartimento di Fisica</option>
-                  <option value="Dipartimento di Informatica">Dipartimento di Informatica</option>
-                  <option value="Dipartimento di Studi Storici">Dipartimento di Studi Storici</option>
-                  <option value="DISAFA">DISAFA</option>
-                  <option value="Altro">Altro Dipartimento</option>
-                </select>
+                <label for="regEmailConfirm">Ripeti email <span class="required">*</span></label>
+                <input type="email" id="regEmailConfirm" required class="form-control" autocomplete="email" placeholder="Conferma la tua email" data-msg-required="Reinserisci l'email per confermarla.">
               </div>
 
               <div class="form-group form-full">
                 <label for="regPassword">Crea una password <span class="required">*</span></label>
                 <input type="password" id="regPassword" required minlength="8" class="form-control" autocomplete="new-password" aria-describedby="regPasswordHint">
                 <small class="form-hint" id="regPasswordHint">Almeno 8 caratteri.</small>
+              </div>
+
+              <div class="form-group form-full">
+                <label for="regPasswordConfirm">Ripeti password <span class="required">*</span></label>
+                <input type="password" id="regPasswordConfirm" required minlength="8" class="form-control" autocomplete="new-password" placeholder="Ripeti la password scelta" data-msg-required="Reinserisci la password per confermarla.">
+                <div class="password-row" style="margin-top: 6px;">
+                  <label class="checkbox-label" style="font-size: 0.85rem; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="showRegPassword"> <span>Mostra password</span>
+                  </label>
+                </div>
               </div>
 
               <div class="form-group form-full">
@@ -4576,7 +5432,61 @@
     `;
 
     enhanceForm(container.querySelector('#registerForm'), {
+      custom: {
+        regEmail: el => {
+          const val = (el.value || '').trim();
+          if (!val) return '';
+          const parts = val.split('@');
+          if (parts.length !== 2 || !parts[1].includes('.')) {
+            return 'Inserisci un indirizzo email valido (es. nome.cognome@unito.it o nome@gmail.com).';
+          }
+          const dom = parts[1].toLowerCase().trim();
+          if (!isValidEmailDomain(dom)) {
+            return `Il dominio "@${dom}" non risulta tra i provider email riconosciuti o esistenti. Inserisci un'email reale (es. @unito.it, @edu.unito.it, @gmail.com, @hotmail.com, @libero.it, @outlook.com).`;
+          }
+          return '';
+        },
+        regEmailConfirm: el => {
+          const email = (container.querySelector('#regEmail').value || '').trim();
+          const confirm = (el.value || '').trim();
+          if (confirm && email.toLowerCase() !== confirm.toLowerCase()) {
+            return 'Le email inserite non coincidono.';
+          }
+          const parts = confirm.split('@');
+          if (parts.length === 2 && parts[1].includes('.')) {
+            const dom = parts[1].toLowerCase().trim();
+            if (!isValidEmailDomain(dom)) {
+              return `Il dominio "@${dom}" non risulta tra i provider email riconosciuti o esistenti.`;
+            }
+          }
+          return '';
+        },
+        regPasswordConfirm: el => {
+          const pwd = container.querySelector('#regPassword').value || '';
+          const confirm = el.value || '';
+          if (confirm && pwd !== confirm) {
+            return 'Le password inserite non coincidono.';
+          }
+          return '';
+        }
+      },
       onValid: () => {
+        const email = container.querySelector('#regEmail').value.trim();
+        const emailConfirm = container.querySelector('#regEmailConfirm').value.trim();
+        const pwd = container.querySelector('#regPassword').value;
+        const pwdConfirm = container.querySelector('#regPasswordConfirm').value;
+
+        if (email.toLowerCase() !== emailConfirm.toLowerCase()) {
+          showFieldError(container.querySelector('#regEmailConfirm'), 'Le email inserite non coincidono.');
+          container.querySelector('#regEmailConfirm').focus();
+          return;
+        }
+        if (pwd !== pwdConfirm) {
+          showFieldError(container.querySelector('#regPasswordConfirm'), 'Le password inserite non coincidono.');
+          container.querySelector('#regPasswordConfirm').focus();
+          return;
+        }
+
         const firstName = container.querySelector('#regFirstName').value.trim();
         const lastName = container.querySelector('#regLastName').value.trim();
         const fullName = `${firstName} ${lastName}`.trim();
@@ -4584,14 +5494,41 @@
           name: fullName,
           firstName,
           lastName,
-          email: container.querySelector('#regEmail').value.trim(),
-          role: 'Progettista registrato',
-          department: container.querySelector('#regDept').value
+          email
         });
         showToast(`Registrazione completata. Benvenuto ${fullName}!`, 'success');
         navigateTo('#/' + redirect);
       }
     });
+
+    const regEmail = container.querySelector('#regEmail');
+    const regEmailConfirm = container.querySelector('#regEmailConfirm');
+    if (regEmail && regEmailConfirm) {
+      regEmail.addEventListener('input', () => {
+        if (regEmailConfirm.value) {
+          regEmailConfirm.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    }
+
+    const regPassword = container.querySelector('#regPassword');
+    const regPasswordConfirm = container.querySelector('#regPasswordConfirm');
+    if (regPassword && regPasswordConfirm) {
+      regPassword.addEventListener('input', () => {
+        if (regPasswordConfirm.value) {
+          regPasswordConfirm.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    }
+
+    const showPwd = container.querySelector('#showRegPassword');
+    if (showPwd && regPassword && regPasswordConfirm) {
+      showPwd.addEventListener('change', e => {
+        const type = e.target.checked ? 'text' : 'password';
+        regPassword.type = type;
+        regPasswordConfirm.type = type;
+      });
+    }
   }
   /**
    * PAGINA 11: PROFILO / AREA PERSONALE
@@ -4626,12 +5563,11 @@
             <div class="profile-user-card">
               <div class="user-big-avatar" aria-hidden="true">👤</div>
               <h2 class="user-display-name">${esc(currentUser.name)}</h2>
-              <p class="user-display-role">${esc(currentUser.role || 'Ricercatore UniTO')}</p>
-              <p class="user-display-dept">${esc(currentUser.department || 'Università degli Studi di Torino')}</p>
               <p class="user-display-email">${esc(currentUser.email)}</p>
               <hr style="margin: 1.25rem 0; border: none; border-top: 1px solid var(--border-color);">
               <a href="#/candidatura" class="btn btn-green-cta btn-block btn-sm">+ Nuova Proposta</a>
               <button type="button" class="btn btn-outline-burgundy btn-block btn-sm" id="btnProfileLogout" style="margin-top: 0.5rem;">Esci dall'account</button>
+              <button type="button" class="btn btn-block btn-sm" id="btnClearUserCache" style="margin-top: 0.5rem; font-size: 0.8rem; color: #b91c1c; background: #fef2f2; border: 1px solid #fca5a5; cursor: pointer;">Azzera tutti i dati e cache</button>
             </div>
 
             <!-- Colonna Proposte e Iscrizioni -->
@@ -4678,7 +5614,10 @@
                           <strong>${esc(e.sessionTitle || (TRAINING_SESSIONS.find(t => t.id === e.sessionId) || {}).title || e.sessionId)}</strong><br>
                           <small style="color: var(--text-muted);">Registrato il: ${new Date(e.enrolledAt).toLocaleDateString('it-IT')}</small>
                         </div>
-                        <span class="status-enrolled-pill">✓ Confermato</span>
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                          <span class="status-enrolled-pill">✓ Confermato</span>
+                          <button type="button" class="btn-cancel-enrollment" data-session-id="${e.sessionId}" style="background: none; border: none; color: #b91c1c; font-size: 0.8rem; cursor: pointer; text-decoration: underline;">Annulla</button>
+                        </div>
                       </li>
                     `).join('')}
                   </ul>
@@ -4690,11 +5629,38 @@
       </section>
     `;
 
+    container.querySelectorAll('.btn-cancel-enrollment').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const sid = btn.getAttribute('data-session-id');
+        let all = readJSON(TRAINING_ENROLL_KEY, []);
+        all = all.filter(en => {
+          if (en.sessionId !== sid) return true;
+          if (currentUser && currentUser.email && en.email) {
+            return en.email.toLowerCase() !== currentUser.email.toLowerCase();
+          }
+          return false;
+        });
+        writeJSON(TRAINING_ENROLL_KEY, all);
+        showToast('Iscrizione all\'edizione annullata.', 'info');
+        renderProfilo(container);
+      });
+    });
+
+    const clearCacheBtn = container.querySelector('#btnClearUserCache');
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener('click', () => {
+        clearAllUserDataAndCache();
+        showToast('Tutti i dati della sessione, bozze, pagamenti e appuntamenti sono stati azzerati.', 'info');
+        renderProfilo(container);
+      });
+    }
+
     const logoutBtn = container.querySelector('#btnProfileLogout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
         setCurrentUser(null);
-        showToast('Logout effettuato.', 'info');
+        showToast('Logout effettuato. Tutti i dati della sessione sono stati azzerati.', 'info');
         navigateTo('#/home');
       });
     }
@@ -4762,7 +5728,7 @@
               <a href="#/come-funziona" class="useful-link-card">
                 <span class="card-icon" aria-hidden="true">💡</span>
                 <div>
-                  <strong>Come funziona</strong>
+                  <strong>Come donare</strong>
                   <small>Come si dona, metodi di pagamento e regola "tutto o niente"</small>
                 </div>
               </a>
@@ -4808,12 +5774,14 @@
      ========================================================================== */
 
   function closeDropdown() {
-    const toggle = document.getElementById('cercaDropdownToggle');
-    const menu = document.getElementById('cercaDropdownMenu');
-    if (toggle && menu) {
-      toggle.setAttribute('aria-expanded', 'false');
-      menu.classList.remove('show');
-    }
+    ['cerca', 'servizi'].forEach(prefix => {
+      const toggle = document.getElementById(prefix + 'DropdownToggle');
+      const menu = document.getElementById(prefix + 'DropdownMenu');
+      if (toggle && menu) {
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.classList.remove('show');
+      }
+    });
   }
 
   function setupHeader() {
@@ -4829,13 +5797,46 @@
       });
     }
 
-    // 2. Menu a tendina "Cerca progetti", generato da CATEGORIES
-    // [REVISIONE] role="menu"/"menuitem" senza navigazione con le frecce: ora è un elenco di link
-    // che si chiude con Esc, uscendo col Tab o scegliendo una voce.
-    const dropdownToggle = document.getElementById('cercaDropdownToggle');
-    const dropdownMenu = document.getElementById('cercaDropdownMenu');
+    // Helper per registrare un menu a tendina
+    function registerDropdown(toggleId, menuId) {
+      const toggle = document.getElementById(toggleId);
+      const menu = document.getElementById(menuId);
+      if (!toggle || !menu) return;
 
-    if (dropdownToggle && dropdownMenu) {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const willExpand = toggle.getAttribute('aria-expanded') !== 'true';
+        closeDropdown();
+        if (willExpand) {
+          toggle.setAttribute('aria-expanded', 'true');
+          menu.classList.add('show');
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+          toggle.setAttribute('aria-expanded', 'false');
+          menu.classList.remove('show');
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menu.classList.contains('show')) {
+          toggle.setAttribute('aria-expanded', 'false');
+          menu.classList.remove('show');
+          toggle.focus();
+        }
+      });
+      menu.addEventListener('focusout', (e) => {
+        if (!menu.contains(e.relatedTarget) && e.relatedTarget !== toggle) {
+          toggle.setAttribute('aria-expanded', 'false');
+          menu.classList.remove('show');
+        }
+      });
+    }
+
+    // 2. Menu a tendina "Cerca progetti" e "Servizi"
+    const dropdownMenu = document.getElementById('cercaDropdownMenu');
+    if (dropdownMenu) {
       dropdownMenu.innerHTML = `
         <li><a href="#/cerca" class="dropdown-item-link"><strong>Tutte le campagne (${MOCK_PROJECTS.length})</strong></a></li>
         <li class="dropdown-divider" aria-hidden="true"></li>
@@ -4845,30 +5846,9 @@
             ${esc(c.label)}
           </a></li>`).join('')}
       `;
-
-      dropdownToggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isExpanded = dropdownToggle.getAttribute('aria-expanded') === 'true';
-        dropdownToggle.setAttribute('aria-expanded', String(!isExpanded));
-        dropdownMenu.classList.toggle('show');
-      });
-
-      // Chiudi il menu se si clicca all'esterno
-      document.addEventListener('click', (e) => {
-        if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-          closeDropdown();
-        }
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && dropdownMenu.classList.contains('show')) {
-          closeDropdown();
-          dropdownToggle.focus();
-        }
-      });
-      dropdownMenu.addEventListener('focusout', (e) => {
-        if (!dropdownMenu.contains(e.relatedTarget) && e.relatedTarget !== dropdownToggle) closeDropdown();
-      });
     }
+    registerDropdown('cercaDropdownToggle', 'cercaDropdownMenu');
+    registerDropdown('serviziDropdownToggle', 'serviziDropdownMenu');
 
     // 3. Link alle aree nel footer, dalla stessa fonte del menu
     const footerExplore = document.getElementById('footerExploreLinks');

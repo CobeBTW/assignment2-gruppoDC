@@ -5,17 +5,14 @@
 ---
 
 ## 🚀 Come visualizzare il progetto
-Il progetto è stato sviluppato **senza backend né dipendenze esterne**, utilizzando **percorsi relativi** e **routing client-side basato su hash** (`#/nome-pagina`).
-Non serve un server: basta aprire il file nel browser.
+Il progetto è stato sviluppato **senza backend né dipendenze esterne**, utilizzando **percorsi relativi** e **routing client-side basato su hash** (`#/nome-pagina`).  
+Può essere eseguito aprendo direttamente il file nel browser (senza necessità di avviare un server web locale):
 
-- **Pagina iniziale:** `index.html` (doppio clic, oppure trascinalo in Chrome, Firefox o Edge). Si apre sulla Home (`#/home`).
-- **JavaScript** deve essere attivo: le pagine vengono generate da `js/app.js`.
-- **Accesso demo:** nella pagina *Accedi* il pulsante "Accedi come Prof. Marco Bianchi" entra senza credenziali.
-- **Pagina 404:** si prova digitando un indirizzo inesistente, per esempio `index.html#/pagina-inesistente`.
-- I dati inseriti (iscrizioni, candidature, accesso) restano salvati solo nel browser usato (`localStorage`).
-
-<!-- [REVISIONE] CORRETTO: qui c'era il percorso di un computer specifico
-     (/Users/ardhila/.gemini/antigravity/scratch/...), inutilizzabile per chi riceve lo zip. -->
+- **Percorso file:** [`/Users/ardhila/.gemini/antigravity/scratch/unito-crowdfunding-prototype/index.html`](file:///Users/ardhila/.gemini/antigravity/scratch/unito-crowdfunding-prototype/index.html)
+- Oppure da terminale:
+  ```bash
+  open /Users/ardhila/.gemini/antigravity/scratch/unito-crowdfunding-prototype/index.html
+  ```
 
 ---
 

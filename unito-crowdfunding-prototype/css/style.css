@@ -55,9 +55,12 @@
   padding: 0;
 }
 
+html, body {
+  scroll-behavior: auto !important;
+}
+
 html {
   font-size: 16px;
-  scroll-behavior: smooth;
   color-scheme: light;
 }
 
@@ -282,56 +285,60 @@ p a:hover,
   gap: 0.75rem;
 }
 
-.nav-link {
-  color: var(--text-primary);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.55rem 0.85rem;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease-in-out;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.nav-link:hover {
-  color: var(--unito-burgundy);
-  background: var(--unito-burgundy-subtle);
-}
-.nav-link.active {
-  color: var(--unito-burgundy);
-  background: var(--unito-burgundy-subtle);
-  font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--unito-burgundy);
-}
-
-/* Menu a tendina "Cerca progetti" */
-.nav-dropdown {
-  position: relative;
-}
+.nav-link,
 .dropdown-toggle-btn {
-  background: transparent;
-  border: none;
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 600;
+  line-height: 1;
+  height: 40px;
+  box-sizing: border-box;
   color: var(--text-primary);
-  padding: 0.55rem 0.85rem;
+  text-decoration: none !important;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  transition: all 0.15s;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+  vertical-align: middle;
+  margin: 0;
 }
+
+.nav-link:hover,
 .dropdown-toggle-btn:hover,
 .dropdown-toggle-btn[aria-expanded="true"] {
   color: var(--unito-burgundy);
   background: var(--unito-burgundy-subtle);
+  border-color: rgba(139, 21, 56, 0.15);
 }
+
+.nav-link.active,
+.dropdown-toggle-btn.active {
+  color: var(--unito-burgundy);
+  background: var(--unito-burgundy-subtle);
+  font-weight: 700;
+  border-color: rgba(139, 21, 56, 0.2);
+  box-shadow: inset 0 -2px 0 var(--unito-burgundy);
+}
+
+/* Menu a tendina "Cerca progetti" e "Servizi" */
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .dropdown-arrow {
   font-size: 0.75rem;
   transition: transform 0.2s;
+  display: inline-block;
+  line-height: 1;
 }
 .dropdown-toggle-btn[aria-expanded="true"] .dropdown-arrow {
   transform: rotate(180deg);
@@ -365,9 +372,11 @@ p a:hover,
   font-weight: 500;
   transition: background 0.15s;
 }
-.dropdown-item-link:hover {
+.dropdown-item-link:hover,
+.dropdown-item-link.active {
   background: var(--unito-burgundy-subtle);
   color: var(--unito-burgundy);
+  font-weight: 700;
 }
 .dropdown-divider {
   height: 1px;
@@ -528,30 +537,40 @@ p a:hover,
   background: var(--unito-burgundy);
   color: #FFFFFF;
   box-shadow: 0 2px 4px rgba(139, 21, 56, 0.2);
+  transition: all 0.2s ease-in-out;
 }
 .btn-primary-burgundy:hover {
-  background: var(--unito-burgundy-dark);
+  background: #9E1B42;
+  color: #FFFFFF;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(139, 21, 56, 0.3);
+  box-shadow: 0 4px 10px rgba(139, 21, 56, 0.35);
 }
 
 .btn-secondary-outline {
   background: var(--bg-surface);
   color: var(--unito-burgundy);
   border-color: var(--unito-burgundy);
+  transition: all 0.2s ease-in-out;
 }
 .btn-secondary-outline:hover {
   background: var(--unito-burgundy-subtle);
+  color: var(--unito-burgundy);
+  border-color: var(--unito-burgundy);
+  transform: translateY(-1px);
 }
 
 .btn-outline-burgundy {
   background: transparent;
   color: var(--unito-burgundy);
   border: 1.5px solid var(--unito-burgundy);
+  transition: all 0.2s ease-in-out;
 }
 .btn-outline-burgundy:hover {
-  background: var(--unito-burgundy);
-  color: #FFFFFF;
+  background: var(--unito-burgundy-subtle);
+  color: var(--unito-burgundy);
+  border-color: var(--unito-burgundy);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(139, 21, 56, 0.15);
 }
 
 .btn-ghost {
@@ -568,11 +587,11 @@ p a:hover,
    Elemento chiave richiesto sia in Home che in Proponi Progetto
    ========================================================================== */
 .blue-callout-strip {
-  background: linear-gradient(135deg, var(--ginger-navy) 0%, #103B61 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #FDF2F4 0%, #FFFFFF 100%);
+  color: var(--text-primary);
   padding: 3.5rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .blue-strip-inner {
@@ -584,7 +603,9 @@ p a:hover,
 
 .blue-strip-badge {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--unito-burgundy-subtle);
+  color: var(--unito-burgundy);
+  border: 1px solid rgba(139, 21, 56, 0.2);
   padding: 0.3rem 0.85rem;
   border-radius: var(--radius-pill);
   font-size: 0.8rem;
@@ -592,7 +613,6 @@ p a:hover,
   letter-spacing: 0.5px;
   text-transform: uppercase;
   margin-bottom: 0.85rem;
-  backdrop-filter: blur(4px);
 }
 
 .blue-strip-title {
@@ -600,15 +620,14 @@ p a:hover,
   font-weight: 800;
   line-height: 1.25;
   margin-bottom: 0.85rem;
-  color: #FFFFFF;
+  color: var(--ginger-navy);
 }
 
 .blue-strip-desc {
   font-size: 1.05rem;
   line-height: 1.55;
-  opacity: 0.92;
   margin-bottom: 1.25rem;
-  color: #E2E8F0;
+  color: var(--text-secondary);
 }
 
 .blue-strip-highlights {
@@ -617,7 +636,7 @@ p a:hover,
   flex-wrap: wrap;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #A7F3D0; /* Verde menta chiaro */
+  color: var(--unito-burgundy-dark);
 }
 
 .blue-strip-action {
@@ -628,9 +647,9 @@ p a:hover,
   gap: 0.75rem;
 }
 
-/* Il Pulsante Verde Chiave */
+/* Pulsante Bordeaux "Invia la tua proposta" */
 .btn-green-cta {
-  background: var(--ginger-green);
+  background: var(--unito-burgundy);
   color: #FFFFFF !important;
   font-size: 1.15rem;
   font-weight: 700;
@@ -641,29 +660,29 @@ p a:hover,
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+  box-shadow: 0 4px 14px rgba(139, 21, 56, 0.3);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid transparent;
   min-height: 52px;
 }
 .btn-green-cta:hover {
-  background: var(--ginger-green-hover);
+  background: var(--unito-burgundy-dark);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5);
+  box-shadow: 0 6px 20px rgba(139, 21, 56, 0.45);
 }
 .btn-green-submit {
-  background: var(--ginger-green);
+  background: var(--unito-burgundy);
   color: #FFFFFF;
   border: none;
   font-weight: 700;
 }
 .btn-green-submit:hover {
-  background: var(--ginger-green-hover);
+  background: var(--unito-burgundy-dark);
 }
 
 .blue-strip-subnote {
   font-size: 0.8125rem;
-  color: #CBD5E1;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -729,11 +748,6 @@ p a:hover,
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.ginger-project-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
 }
 
 .card-thumb-wrap {
@@ -779,10 +793,6 @@ p a:hover,
 
 .card-thumb-center-icon {
   opacity: 0.85;
-  transition: transform 0.3s;
-}
-.ginger-project-card:hover .card-thumb-center-icon {
-  transform: scale(1.1);
 }
 
 .card-status-flag {
@@ -1164,10 +1174,6 @@ p a:hover,
   border-radius: var(--radius-lg);
   padding: 2.25rem 2rem;
   position: relative;
-  transition: transform 0.2s;
-}
-.step-card:hover {
-  transform: translateY(-3px);
 }
 .step-card.highlight {
   background: #F0FDF4;
@@ -1437,6 +1443,40 @@ p a:hover,
   padding: 0.25rem 0.6rem;
   border-radius: var(--radius-sm);
 }
+.calendar-date-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #FDF2F4;
+  border: 1px solid rgba(155, 27, 48, 0.2);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.85rem;
+  min-width: 85px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.calendar-date-badge .cal-day {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--unito-burgundy);
+}
+.calendar-date-badge .cal-month {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--unito-burgundy);
+  margin-top: 0.25rem;
+  line-height: 1.1;
+}
+.calendar-date-badge .cal-year {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.1;
+}
 .badge-seats {
   font-weight: 600;
   color: #166534;
@@ -1446,9 +1486,14 @@ p a:hover,
   color: #166534;
   font-size: 0.775rem;
   font-weight: 700;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: var(--radius-pill);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  text-align: center;
+  margin: 0 auto;
 }
 
 /* Card Modulo Iscrizione */
@@ -1799,6 +1844,7 @@ select.form-control {
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   margin-top: 1rem;
+  margin-bottom: 2rem;
 }
 
 .package-selection-radios {
@@ -2375,6 +2421,11 @@ select.form-control {
 }
 .accordion-item.open .accordion-body {
   display: block;
+}
+.accordion-item.faq-highlighted {
+  border-color: var(--unito-burgundy) !important;
+  box-shadow: 0 0 0 3px rgba(155, 27, 48, 0.35) !important;
+  transition: all 0.3s ease;
 }
 
 /* ==========================================================================
@@ -2969,6 +3020,17 @@ input[aria-invalid="true"] {
   color: #B45309;
   font-weight: 700;
 }
+.field-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.2rem;
+  gap: 0.75rem;
+}
+.field-meta-row .form-hint,
+.field-meta-row .char-counter {
+  margin: 0;
+}
 .form-side-note {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -3539,8 +3601,33 @@ input[aria-invalid="true"] {
   gap: 0.6rem;
   min-width: 0;
 }
+/* [REVISIONE] 02/11: tolto il blocco di selezione del testo sui campi password (vedi app.js, securePasswordField) */
+
 .checkout-fieldset.compact {
   gap: 0.5rem;
+}
+.address-civic-row {
+  display: flex;
+  gap: 1.25rem;
+  width: 100%;
+}
+.address-main-group {
+  flex: 3;
+  min-width: 0;
+}
+.address-civic-group {
+  flex: 1;
+  max-width: 130px;
+  min-width: 90px;
+}
+@media (max-width: 520px) {
+  .address-civic-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .address-civic-group {
+    max-width: 100%;
+  }
 }
 .checkout-fieldset legend {
   font-weight: 700;
@@ -4092,6 +4179,126 @@ input[aria-invalid="true"] {
   margin: 0.5rem 0 1.25rem 0;
 }
 
+/* --- Barra di ricerca FAQ e Ticket Fallback --- */
+.faq-search-box-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+}
+.faq-search-label {
+  display: block;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--ginger-navy);
+  margin-bottom: 0.35rem;
+}
+.faq-search-desc {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+.faq-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.faq-search-icon {
+  position: absolute;
+  left: 1rem;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+.faq-search-input {
+  width: 100%;
+  padding-left: 3rem !important;
+  padding-right: 2.75rem !important;
+  height: 52px;
+  font-size: 1.05rem !important;
+  border-radius: var(--radius-md) !important;
+  border: 2px solid var(--border-color) !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.faq-search-input:focus {
+  border-color: var(--unito-burgundy) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.15);
+}
+.faq-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+.faq-clear-btn:hover {
+  color: var(--unito-burgundy);
+}
+.faq-search-summary {
+  margin-top: 0.65rem;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  min-height: 1.4rem;
+}
+.faq-item-meta {
+  padding: 0.75rem 1.5rem 0 1.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--unito-burgundy);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.faq-search-ticket-prompt {
+  margin-top: 1.75rem;
+  padding: 1.25rem 1.5rem;
+  background: #FFF8F5;
+  border: 1px solid #FFEDD5;
+  border-left: 5px solid #EA580C;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.faq-no-results-card {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 2px dashed #DC2626;
+  border-radius: var(--radius-lg);
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+.faq-no-results-card h3 {
+  color: var(--unito-burgundy);
+  margin-bottom: 0.65rem;
+  font-size: 1.4rem;
+}
+.faq-ticket-callout {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-left: 5px solid #1D4ED8;
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.faq-ticket-callout h3 {
+  color: #1D4ED8;
+  margin: 0 0 0.4rem 0;
+  font-size: 1.15rem;
+}
+
 /* --- Come funziona --- */
 .four-steps-grid {
   list-style: none;
@@ -4427,14 +4634,136 @@ input[aria-invalid="true"] {
   }
 }
 
+/* ==========================================================================
+   [REVISIONE] 31/10: PayPal non deve sembrare "già pagato"
+   - nota sul metodo scelto in precedenza (passo 3) e sull'autorizzazione annullata (passo 4);
+   - finestra di autorizzazione simulata (passo 4), con lo stile del sito e l'etichetta "Simulazione".
+   ========================================================================== */
+.pay-previous-note {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius-md);
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.pay-previous-note.warn {
+  background: #FFFBEB;
+  border-color: #FCD34D;
+}
+.pay-previous-note a {
+  color: var(--unito-burgundy);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.paypal-sim-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.paypal-sim-dialog {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 460px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.paypal-sim-badge {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #92400E;
+  background: #FEF3C7;
+  border-radius: var(--radius-pill);
+  padding: 0.2rem 0.6rem;
+}
+.paypal-sim-dialog h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ginger-navy);
+}
+.paypal-sim-dialog p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.paypal-sim-lines div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+.paypal-sim-lines dt {
+  color: var(--text-muted);
+}
+.paypal-sim-lines dd {
+  text-align: right;
+}
+.paypal-sim-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.paypal-sim-actions .btn-green-cta {
+  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  min-height: 44px;
+}
+.paypal-sim-actions .btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
 
+/* ==========================================================================
+   [REVISIONE] 31/10: avviso sul costo del pacchetto nella candidatura (sezione 3)
+   Compare solo quando il pacchetto supera il 20% di obiettivo + raddoppio; non blocca l'invio.
+   ========================================================================== */
+.budget-cost-note {
+  margin-top: 1.25rem;
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  border-left: 4px solid #D97706;
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.budget-cost-note[hidden] {
+  display: none;
+}
+.budget-cost-note p {
+  margin: 0;
+}
+.budget-cost-note p + p {
+  margin-top: 0.4rem;
+}
+.budget-cost-note a {
+  color: var(--unito-burgundy);
+  font-weight: 600;
+  text-decoration: underline;
+}
 
-
-
-
-
-
-
-
-
-
+/* ==========================================================================
+   [REVISIONE] 31/10: sigillo ufficiale UniTO nell'header (sostituisce .unito-seal-circle)
+   ========================================================================== */
+.unito-seal-img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}

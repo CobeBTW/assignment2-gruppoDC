@@ -7,7 +7,9 @@
   <title>CrowdUniTO | Il Crowdfunding per la Ricerca dell'Università di Torino</title>
   <meta name="description"
     content="Piattaforma di crowdfunding per la ricerca dell'Università degli Studi di Torino. Formula Lasci o Raddoppi: l'Ateneo raddoppia i fondi raccolti dai cittadini.">
-  <link rel="stylesheet" href="css/style.css">
+  <!-- [REVISIONE] 31/10: "?v=..." obbliga il browser a scaricare CSS e JS aggiornati invece di usare la copia
+       in cache (con F5 Chrome può tenere la versione vecchia). Va cambiato a ogni modifica dei file. -->
+  <link rel="stylesheet" href="css/style.css?v=04ecbd9a">
 </head>
 
 <body>
@@ -24,9 +26,8 @@
       <span>Portale di Crowdfunding dell'<strong>Università degli Studi di Torino</strong> &bull; Iniziativa di Terza
         Missione &amp; Public Engagement</span>
       <nav aria-label="Link di servizio" class="institutional-links">
-        <!-- [NUOVO] Assistenza sempre raggiungibile (A1, euristica 10, sev. 2: mancava un modo diretto per chiedere aiuto) -->
-        <a href="#/assistenza">Assistenza</a>
-        <span aria-hidden="true">&middot;</span>
+        <!-- [REVISIONE] 31/10: tolto il link "Assistenza" da questa barra (richiesta del gruppo): era un doppione
+             del link nel footer. L'assistenza resta raggiungibile da footer, FAQ, checkout e ricerca globale. -->
         <a href="https://www.unito.it" target="_blank" rel="noopener noreferrer">Portale UniTO.it &nearr;<span
             class="sr-only"> (si apre in una nuova scheda)</span></a>
       </nav>
@@ -42,12 +43,10 @@
       <!-- In alto a sinistra, affiancati: Logo UniTO e Logo del sito CrowdUniTO -->
       <div class="brand-logos-container">
         <a href="#/home" class="unito-emblem-seal" title="Università degli Studi di Torino - Portale Crowdfunding">
-          <div class="unito-seal-circle" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
+          <!-- [REVISIONE] 31/10: al posto dell'icona generica, il sigillo ufficiale UniTO (file fornito dal gruppo),
+               ricolorato nel bordeaux dell'header (#8B1538) e con lo sfondo trasparente: assets/logo-unito.png.
+               alt vuoto perché il nome dell'Ateneo è già scritto accanto. -->
+          <img src="assets/logo-unito.png" class="unito-seal-img" width="48" height="48" alt="">
           <div class="unito-words">
             <span class="unito-words-top">Università</span>
             <span class="unito-words-mid">degli Studi</span>
@@ -111,9 +110,23 @@
                 <li><a href="#/cerca" class="dropdown-item-link"><strong>Tutte le campagne</strong></a></li>
               </ul>
             </li>
-            <li><a href="#/come-funziona" class="nav-link">Come funziona</a></li>
-            <li><a href="#/proponi" class="nav-link">Proponi progetto</a></li>
+            <!-- [REVISIONE] 31/10: "Come funziona" → "Come donare" (segnalazione: la voce non diceva per chi né per cosa;
+                 la pagina spiega come si fa una donazione). L'indirizzo #/come-funziona resta uguale per non rompere i link. -->
+            <li><a href="#/come-funziona" class="nav-link">Come donare</a></li>
             <li><a href="#/faq" class="nav-link">FAQ</a></li>
+            <li><a href="#/proponi" class="nav-link">Proponi progetto</a></li>
+            <li class="nav-dropdown">
+              <button type="button" class="dropdown-toggle-btn" id="serviziDropdownToggle" aria-expanded="false"
+                aria-controls="serviziDropdownMenu">
+                <span>Servizi</span>
+                <span class="dropdown-arrow" aria-hidden="true">&#9662;</span>
+              </button>
+              <ul class="dropdown-menu-list" id="serviziDropdownMenu" aria-label="Servizi">
+                <!-- [REVISIONE] 31/10: stessi nomi delle briciole di pane delle due pagine -->
+                <li><a href="#/formazione" class="dropdown-item-link">Formazione &amp; Calendario</a></li>
+                <li><a href="#/pacchetti" class="dropdown-item-link">Pacchetti Servizi</a></li>
+              </ul>
+            </li>
           </ul>
         </nav>
       </div>
@@ -163,18 +176,17 @@
         <!-- Le aree vengono aggiunte da app.js (stessa fonte del menu: CATEGORIES) -->
         <ul class="footer-links" id="footerExploreLinks">
           <li><a href="#/cerca">Tutte le campagne</a></li>
-          <li><a href="#/come-funziona">Come funziona la donazione</a></li>
+          <li><a href="#/come-funziona">Come donare</a></li>
         </ul>
       </div>
 
       <div>
         <h2 class="footer-col-title">Per i ricercatori</h2>
         <ul class="footer-links">
-          <li><a href="#/proponi">Proponi un progetto (le 4 fasi)</a></li>
-          <li><a href="#/formazione">Fase 1: formazione e calendario</a></li>
-          <li><a href="#/pacchetti">Fase 3: pacchetti di servizi</a></li>
-          <li><a href="#/candidatura">Invia la proposta online</a></li>
-          <li><a href="#/profilo">Area personale</a></li>
+          <li><a href="#/proponi">Proponi un progetto</a></li>
+          <!-- [REVISIONE] 31/10: stessi nomi delle briciole di pane delle due pagine -->
+          <li><a href="#/formazione">Formazione &amp; Calendario</a></li>
+          <li><a href="#/pacchetti">Pacchetti Servizi</a></li>
         </ul>
       </div>
 
@@ -183,24 +195,22 @@
       <div>
         <h2 class="footer-col-title">Supporto</h2>
         <ul class="footer-links">
-          <li><a href="#/faq">Domande frequenti (FAQ)</a></li>
-          <li><a href="#/faq?apri=detrazioni">Detrazioni e benefici fiscali</a></li>
-          <li><a href="#/assistenza">Assistenza: apri una richiesta</a></li>
-          <li><a href="https://www.ideaginger.it/partner/universita-di-torino.html" target="_blank"
-              rel="noopener noreferrer">Portale Ginger Partner &nearr;<span class="sr-only"> (si apre in una nuova
-                scheda)</span></a></li>
+          <li><a href="#/faq">FAQ</a></li>
+          <li><a href="#/assistenza">Assistenza</a></li>
         </ul>
       </div>
     </div>
 
     <div class="container footer-bottom">
       <span>&copy; 2026 Università degli Studi di Torino &bull; Progetto didattico per il corso di
-        <strong>Human-Computer Interaction (HCI)</strong> &bull; Pagamenti e dati simulati.</span>
+        <strong>Human-Computer Interaction (HCI)</strong>.</span>
     </div>
   </footer>
 
+  <!-- Database CAP Italiani (100% Client-Side, Zero Backend, Offline) -->
+  <script src="js/cap-data.js?v=20261102"></script>
   <!-- Script Applicativo Client-Side -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=4bf13649"></script>
 </body>
 
 </html>
